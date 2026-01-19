@@ -1,0 +1,11 @@
+{
+  "name": "@vski/sdk",
+  "nodeModulesDir": "auto",
+  "exports": "./exports.ts",
+  "tasks": {
+    "build": "deno run --unstable-bundle -A build.ts"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1"
+  }
+}
