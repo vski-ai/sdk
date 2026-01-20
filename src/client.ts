@@ -695,17 +695,24 @@ export class RocketBaseClient {
 
   get workflow() {
     const self = this;
+
     const base = `${self.baseUrl}/api/workflows`;
+
     return {
       createRun: async (data: any) => {
         const res = await fetch(`${base}/runs`, {
           method: "POST",
+
           headers: self.headers,
+
           body: JSON.stringify(data),
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       trigger: async (
         workflowName: string,
         input: any[],
@@ -713,105 +720,159 @@ export class RocketBaseClient {
       ) => {
         const run = await self.workflow.createRun({
           deploymentId: options.deploymentId || "sdk",
+
           workflowName,
+
           input,
         });
+
         await self.workflow.queueMessage(`__wkf_workflow_${workflowName}`, {
           type: "workflow_start",
+
           runId: run.runId,
+
           workflowName,
+
           input,
         });
+
         return run;
       },
+
       resume: async (runId: string) => {
         const run = await self.workflow.getRun(runId);
+
         await self.workflow.queueMessage(`__wkf_workflow_${run.workflowName}`, {
           type: "resume",
+
           runId: run.runId,
+
           workflowName: run.workflowName,
+
           input: run.input,
         });
+
         return run;
       },
+
       getRun: async (runId: string) => {
         const res = await fetch(`${base}/runs/${runId}`, {
           headers: self.headers,
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       updateRun: async (runId: string, data: any) => {
         const res = await fetch(`${base}/runs/${runId}`, {
           method: "PATCH",
+
           headers: self.headers,
+
           body: JSON.stringify(data),
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       listRuns: async (
         params: {
           workflowName?: string;
+
           status?: string;
+
           limit?: number;
+
           cursor?: string;
         } = {},
       ) => {
         const p = new URLSearchParams();
+
         if (params.workflowName) p.append("workflowName", params.workflowName);
+
         if (params.status) p.append("status", params.status);
+
         if (params.limit) p.append("limit", String(params.limit));
+
         if (params.cursor) p.append("cursor", params.cursor);
 
         const res = await fetch(`${base}/runs?${p.toString()}`, {
           headers: self.headers,
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       createStep: async (runId: string, data: any) => {
         const res = await fetch(`${base}/steps`, {
           method: "POST",
+
           headers: self.headers,
+
           body: JSON.stringify({ runId, ...data }),
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       updateStep: async (runId: string, stepId: string, data: any) => {
         const res = await fetch(`${base}/steps/${runId}/${stepId}`, {
           method: "PATCH",
+
           headers: self.headers,
+
           body: JSON.stringify(data),
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       createEvent: async (runId: string, data: any) => {
         const res = await fetch(`${base}/events`, {
           method: "POST",
+
           headers: self.headers,
+
           body: JSON.stringify({ runId, ...data }),
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       listEvents: async (runId: string) => {
         const res = await fetch(`${base}/runs/${runId}/events`, {
           headers: self.headers,
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       pollQueue: async (queueName: string) => {
         const res = await fetch(`${base}/queue/${queueName}`, {
           headers: self.headers,
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         const text = await res.text();
+
         return text ? JSON.parse(text) : null;
       },
+
       sendSignal: async (
         runId: string,
         signalName: string,
@@ -819,90 +880,152 @@ export class RocketBaseClient {
         correlationId?: string,
       ) => {
         // 1. Create signal event
+
         await self.workflow.createEvent(runId, {
           eventType: "signal_received",
+
           correlationId: correlationId ||
             `signal-${signalName}-${crypto.randomUUID()}`, // Deterministic ID for the signal
+
           payload: { name: signalName, data },
         });
 
         // 2. Queue workflow for execution
+
         const run = await self.workflow.getRun(runId);
+
         await self.workflow.queueMessage(`__wkf_workflow_${run.workflowName}`, {
           type: "signal",
+
           runId: runId,
+
           workflowName: run.workflowName,
+
           input: run.input,
         });
+
         return true;
       },
+
       queueMessage: async (queueName: string, message: any, opts?: any) => {
         const res = await fetch(`${base}/queue`, {
           method: "POST",
+
           headers: self.headers,
+
           body: JSON.stringify({ queueName, message, opts }),
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       ack: async (messageId: string) => {
         const res = await fetch(`${base}/queue/ack`, {
           method: "POST",
+
           headers: self.headers,
+
           body: JSON.stringify({ messageId }),
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       nack: async (messageId: string) => {
         const res = await fetch(`${base}/queue/nack`, {
           method: "POST",
+
           headers: self.headers,
+
           body: JSON.stringify({ messageId }),
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       },
+
       hooks: {
         create: async (runId: string, data: any) => {
           const res = await fetch(`${base}/hooks`, {
             method: "POST",
+
             headers: self.headers,
+
             body: JSON.stringify({ runId, ...data }),
           });
+
           if (!res.ok) throw new Error(await res.text());
+
           return res.json();
         },
+
         get: async (id: string) => {
           const res = await fetch(`${base}/hooks/${id}`, {
             headers: self.headers,
           });
+
           if (!res.ok) throw new Error(await res.text());
+
           return res.json();
         },
+
         getByToken: async (token: string) => {
           const res = await fetch(`${base}/hooks?token=${token}`, {
             headers: self.headers,
           });
+
           if (!res.ok) throw new Error(await res.text());
+
           return res.json();
         },
+
         list: async (runId: string) => {
           const res = await fetch(`${base}/hooks?runId=${runId}`, {
             headers: self.headers,
           });
+
           if (!res.ok) throw new Error(await res.text());
+
           return res.json();
         },
+
         dispose: async (id: string) => {
           const res = await fetch(`${base}/hooks/${id}`, {
             method: "DELETE",
+
             headers: self.headers,
           });
+
           if (!res.ok) throw new Error(await res.text());
+
           return res.json();
         },
       },
     };
+  }
+
+  async gate(name: string, data?: any, options?: RequestInit) {
+    const fetchOptions: RequestInit = {
+      method: "POST",
+
+      ...options,
+
+      headers: {
+        ...this.headers,
+
+        ...(options?.headers || {}),
+      },
+    };
+
+    if (data) {
+      fetchOptions.body = JSON.stringify(data);
+    }
+
+    return await fetch(`${this.baseUrl}/api/gates/${name}`, fetchOptions);
   }
 }
