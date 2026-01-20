@@ -128,6 +128,7 @@ export class RocketBaseClient {
             headers: self.headers,
           });
           if (!res.ok) throw new Error(await res.text());
+          await res.text();
           return true;
         },
       },
@@ -156,6 +157,7 @@ export class RocketBaseClient {
             headers: self.headers,
           });
           if (!res.ok) throw new Error(await res.text());
+          await res.text();
           return true;
         },
         getList: async () => {
@@ -279,7 +281,10 @@ export class RocketBaseClient {
         const res = await fetch(`${self.baseUrl}/api/admins/has-admins`, {
           headers: self.headers,
         });
-        if (!res.ok) return { hasAdmins: false };
+        if (!res.ok) {
+          await res.text();
+          return { hasAdmins: false };
+        }
         return res.json();
       },
       me: async () => {
@@ -317,6 +322,7 @@ export class RocketBaseClient {
           headers: self.headers,
         });
         if (!res.ok) throw new Error(await res.text());
+        await res.text();
         return true;
       },
     };
@@ -504,6 +510,7 @@ export class RocketBaseClient {
           },
         );
         if (!res.ok) throw new Error(await res.text());
+        await res.text();
         return true;
       },
 
@@ -667,6 +674,7 @@ export class RocketBaseClient {
           },
         );
         if (!res.ok) throw new Error(await res.text());
+        await res.text();
         return true;
       },
       run: async (
