@@ -150,6 +150,7 @@ export declare class RocketBaseClient {
 		queueMessage: (queueName: string, message: any, opts?: any) => Promise<any>;
 		ack: (messageId: string) => Promise<any>;
 		nack: (messageId: string) => Promise<any>;
+		touch: (messageId: string) => Promise<any>;
 		hooks: {
 			create: (runId: string, data: any) => Promise<any>;
 			get: (id: string) => Promise<any>;
@@ -186,7 +187,10 @@ export declare class WorkflowBase {
 		timeout?: string;
 	}): Promise<any>;
 }
-export declare function Workflow(name: string): (constructor: Function) => void;
+export declare function Workflow(name: string, options?: {
+	maxEvents?: number;
+	executionTimeout?: number;
+}): (constructor: Function) => void;
 export declare function Step(id: string, options?: {
 	retries?: number;
 	rollback?: string[];
@@ -198,23 +202,31 @@ export declare class WorkflowWorker {
 	private active;
 	private workflowName;
 	private stopCallback;
+	private activeJobs;
 	constructor(client: RocketBaseClient);
 	start(workflowName: string, options?: {
 		concurrency?: number;
 		resume?: boolean;
 	}): Promise<void>;
 	private resumePending;
-	stop(): void;
+	stop(): Promise<void>;
 	private connect;
 	processJob(job: any): Promise<void>;
 }
 export declare class StopRollback extends Error {
 	constructor(message?: string);
 }
-export declare function workflow(name: string): {
+export declare function workflow(name: string, options?: {
+	maxEvents?: number;
+	executionTimeout?: number;
+}): {
 	run: (fn: (ctx: WorkflowContext, ...args: any[]) => Promise<any>) => {
 		new (client?: RocketBaseClient): {
 			workflowName: string;
+			workflowOptions: {
+				maxEvents?: number;
+				executionTimeout?: number;
+			};
 			run(...args: any[]): Promise<any>;
 			client: RocketBaseClient;
 			runId: string;

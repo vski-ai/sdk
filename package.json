@@ -1,6 +1,6 @@
 {
   "name": "@vski/sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "RocketBase SDK",
   "main": "dist/exports.js",
   "types": "dist/exports.d.ts",
