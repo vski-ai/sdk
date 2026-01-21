@@ -2,6 +2,7 @@
 //
 
 import type { RealtimeEvent, SubscriptionOptions } from "./types.ts";
+import { WorkflowRegistry } from "./registry.ts";
 
 export class RocketBaseClient {
   public baseUrl: string;
@@ -726,12 +727,17 @@ export class RocketBaseClient {
         input: any[],
         options: any = {},
       ) => {
+        const Class = WorkflowRegistry.get(workflowName);
+        const defaultOptions = Class?.prototype?.workflowOptions || {};
+        const mergedOptions = { ...defaultOptions, ...options };
+
         const run = await self.workflow.createRun({
-          deploymentId: options.deploymentId || "sdk",
+          deploymentId: mergedOptions.deploymentId || "sdk",
 
           workflowName,
 
           input,
+          ...mergedOptions,
         });
 
         await self.workflow.queueMessage(`__wkf_workflow_${workflowName}`, {
@@ -945,6 +951,20 @@ export class RocketBaseClient {
 
       nack: async (messageId: string) => {
         const res = await fetch(`${base}/queue/nack`, {
+          method: "POST",
+
+          headers: self.headers,
+
+          body: JSON.stringify({ messageId }),
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        return res.json();
+      },
+
+      touch: async (messageId: string) => {
+        const res = await fetch(`${base}/queue/touch`, {
           method: "POST",
 
           headers: self.headers,

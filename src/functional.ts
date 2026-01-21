@@ -7,13 +7,17 @@ import { WorkflowContext as ContextManager } from "./context.ts";
 import { WorkflowSuspension } from "./suspension.ts";
 import type { WorkflowContext } from "./types.ts";
 
-export function workflow(name: string) {
+export function workflow(
+  name: string,
+  options: { maxEvents?: number; executionTimeout?: number } = {},
+) {
   return {
     run: (fn: (ctx: WorkflowContext, ...args: any[]) => Promise<any>) => {
       // Create a dynamic class that extends WorkflowBase
       const FunctionalWorkflow = class extends WorkflowBase {
         static workflowName = name;
         workflowName = name;
+        workflowOptions = options;
 
         async run(...args: any[]) {
           const self = this;
@@ -41,7 +45,7 @@ export function workflow(name: string) {
         if (!self.client) throw new Error("Workflow needs a RocketBaseClient.");
 
         if (!self.runId) {
-          const run = await self.client.workflow.trigger(name, args);
+          const run = await self.client.workflow.trigger(name, args, options);
           self.runId = run.runId;
         }
 

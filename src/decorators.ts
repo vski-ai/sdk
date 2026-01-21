@@ -5,10 +5,14 @@ import { WorkflowRegistry } from "./registry.ts";
 import type { WorkflowBase } from "./workflow-base.ts";
 import { WorkflowSuspension } from "./suspension.ts";
 
-export function Workflow(name: string) {
+export function Workflow(
+  name: string,
+  options: { maxEvents?: number; executionTimeout?: number } = {},
+) {
   return function (constructor: Function) {
     WorkflowRegistry.set(name, constructor);
     constructor.prototype.workflowName = name;
+    constructor.prototype.workflowOptions = options;
 
     const originalRun = constructor.prototype.run;
     if (originalRun) {
@@ -17,7 +21,7 @@ export function Workflow(name: string) {
         if (!self.client) throw new Error("Workflow needs a RocketBaseClient.");
 
         if (!self.runId) {
-          const run = await self.client.workflow.trigger(name, args);
+          const run = await self.client.workflow.trigger(name, args, options);
           self.runId = run.runId;
         }
 
