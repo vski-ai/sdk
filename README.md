@@ -1,6 +1,6 @@
-# RocketBase SDK
+# VSKI SDK
 
-The RocketBase (RB) SDK is a runtime-agnostic client for interacting with the
+The VSKI SDK is a runtime-agnostic client for interacting with the VSKI
 RocketBase platform. It supports standard database operations, realtime
 subscriptions, and provides a powerful engine for durable workflows.
 
@@ -43,7 +43,7 @@ Or configure it in your `deno.json` imports:
 ## Quick Start
 
 ```typescript
-import { RocketBaseClient } from "@rocketbase/client";
+import { RocketBaseClient } from "@vski/sdk";
 
 const client = new RocketBaseClient("http://localhost:3001");
 
@@ -109,7 +109,7 @@ signals.
 ### 1. Functional Style (Recommended)
 
 ```typescript
-import { step, workflow } from "@rocketbase/client";
+import { step, workflow } from "@vski/sdk";
 
 // Define reusable steps
 const notifyUser = step("notify", async (email: string) => {
@@ -131,7 +131,7 @@ workflow("welcome-flow").run(async (ctx, email: string) => {
 ### 2. Class-Based Style (Decorators)
 
 ```typescript
-import { Step, Workflow, WorkflowBase } from "@rocketbase/client";
+import { Step, Workflow, WorkflowBase } from "@vski/sdk";
 
 @Workflow("order-process")
 class OrderWorkflow extends WorkflowBase {
@@ -153,7 +153,7 @@ class OrderWorkflow extends WorkflowBase {
 Workers connect to RocketBase via WebSockets and execute the workflow logic.
 
 ```typescript
-import { WorkflowWorker } from "@rocketbase/client";
+import { WorkflowWorker } from "@vski/sdk";
 
 const worker = new WorkflowWorker(client);
 await worker.start("welcome-flow");
