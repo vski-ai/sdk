@@ -5,19 +5,36 @@ import { WorkflowRegistry } from "./registry.ts";
 import { WorkflowBase } from "./workflow-base.ts";
 import { WorkflowContext as ContextManager } from "./context.ts";
 import { WorkflowSuspension } from "./suspension.ts";
-import type { WorkflowContext } from "./types.ts";
+import type { StepOptions, WorkflowContext, WorkflowOptions } from "./types.ts";
 
+/**
+ * Defines a functional workflow.
+ * @param name - The unique name of the workflow.
+ * @param options - Configuration options for the workflow.
+ * @returns An object with a `run` method to define the workflow logic.
+ */
 export function workflow(
   name: string,
-  options: { maxEvents?: number; executionTimeout?: number } = {},
-) {
+  options: WorkflowOptions = {},
+): {
+  run: (
+    fn: (ctx: WorkflowContext, ...args: any[]) => Promise<any>,
+  ) => typeof WorkflowBase;
+} {
   return {
-    run: (fn: (ctx: WorkflowContext, ...args: any[]) => Promise<any>) => {
+    /**
+     * Defines the execution logic of the workflow.
+     * @param fn - A function that takes a context object and arguments, returning a Promise.
+     * @returns A class constructor that implements the workflow.
+     */
+    run: (
+      fn: (ctx: WorkflowContext, ...args: any[]) => Promise<any>,
+    ): typeof WorkflowBase => {
       // Create a dynamic class that extends WorkflowBase
       const FunctionalWorkflow = class extends WorkflowBase {
         static workflowName = name;
-        workflowName = name;
-        workflowOptions = options;
+        override workflowName = name;
+        override workflowOptions = options;
 
         async run(...args: any[]) {
           const self = this;
@@ -84,18 +101,22 @@ export function workflow(
   };
 }
 
+/**
+ * Defines a step within a functional workflow.
+ * Can be used to wrap a function or define a block of code as a step.
+ * @param idOrFn - The step ID (string) or the function to wrap.
+ * @param fnOrOptions - The function (if ID was first) or options (if function was first).
+ * @param options - Options for retries, rollback, etc. (if ID was first).
+ * @returns A wrapped function that executes as a workflow step.
+ */
 export function step<T extends (...args: any[]) => Promise<any>>(
   idOrFn: string | T,
-  fnOrOptions?: T | {
-    retries?: number;
-    rollback?: string[];
-    timeout?: string;
-  },
-  options?: { retries?: number; rollback?: string[]; timeout?: string },
+  fnOrOptions?: T | StepOptions,
+  options?: StepOptions,
 ): T {
   let id: string;
   let fn: T;
-  let opts: any = {};
+  let opts: StepOptions = {};
 
   if (typeof idOrFn === "string") {
     id = idOrFn;
@@ -104,7 +125,7 @@ export function step<T extends (...args: any[]) => Promise<any>>(
   } else {
     fn = idOrFn;
     id = ""; // Will be generated at runtime
-    opts = fnOrOptions || {};
+    opts = (fnOrOptions as StepOptions) || {};
   }
 
   return (async function (this: WorkflowContext | void, ...args: any[]) {

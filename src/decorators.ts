@@ -2,14 +2,22 @@
 //
 
 import { WorkflowRegistry } from "./registry.ts";
+import type { StepOptions, WorkflowOptions } from "./types.ts";
 import type { WorkflowBase } from "./workflow-base.ts";
 import { WorkflowSuspension } from "./suspension.ts";
 
+/**
+ * Decorator to define a class as a Workflow.
+ * Wraps the class to handle initialization, execution, and state management via RocketBase.
+ * @param name - The unique name of the workflow.
+ * @param options - Configuration options for the workflow (e.g., max events, timeout).
+ * @returns A class decorator function.
+ */
 export function Workflow(
   name: string,
-  options: { maxEvents?: number; executionTimeout?: number } = {},
-) {
-  return function (constructor: Function) {
+  options: WorkflowOptions = {},
+): (constructor: Function) => void {
+  return function (constructor: Function): void {
     WorkflowRegistry.set(name, constructor);
     constructor.prototype.workflowName = name;
     constructor.prototype.workflowOptions = options;
@@ -60,15 +68,26 @@ export function Workflow(
   };
 }
 
+/**
+ * Decorator to define a method as a Step within a Workflow.
+ * Wraps the method to provide idempotency, retries, and rollback capabilities.
+ * @param id - The unique identifier for the step.
+ * @param options - Options for retries, rollback methods, and timeout.
+ * @returns A method decorator function.
+ */
 export function Step(
   id: string,
-  options: { retries?: number; rollback?: string[]; timeout?: string } = {},
-) {
+  options: StepOptions = {},
+): (
+  _target: any,
+  _propertyKey: string,
+  descriptor: PropertyDescriptor,
+) => void {
   return function (
     _target: any,
     _propertyKey: string,
     descriptor: PropertyDescriptor,
-  ) {
+  ): void {
     const originalMethod = descriptor.value;
     descriptor.value = async function (...args: any[]) {
       const self = this as WorkflowBase;

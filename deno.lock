@@ -1,7 +1,27 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@std/assert@1": "1.0.17",
+    "jsr:@std/cli@^1.0.26": "1.0.26",
+    "jsr:@std/internal@^1.0.12": "1.0.12",
     "npm:dts-bundle-generator@9.5.1": "9.5.1"
+  },
+  "jsr": {
+    "@std/assert@1.0.17": {
+      "integrity": "df5ebfffe77c03b3fa1401e11c762cc8f603d51021c56c4d15a8c7ab45e90dbe",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/cli@1.0.26": {
+      "integrity": "53679a2b041406f15c3ff193986852595f3d11ba7b9d4b0c71a42589662e8fb5",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.12": {
+      "integrity": "972a634fd5bc34b242024402972cd5143eac68d8dffaca5eaa4dba30ce17b027"
+    }
   },
   "npm": {
     "ansi-regex@5.0.1": {
@@ -98,9 +118,23 @@
       ]
     }
   },
+  "remote": {
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/exports.ts": "0e83956f90ca10b368f01933e5ff322cbf4e92138d88e7f077b2cedecfee2c8e",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/client.ts": "d188f1e01814b16dacfc34fda92cc0088a0cdc2bdc3c350bea713f8efef1e883",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/context.ts": "36cb0685315654ba711a044f2d475156df6152ddb27c268f05b6c45ba4e64066",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/decorators.ts": "910740b26b2b91e0762c06c99908573343c40222003c81cb801534b90c999880",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/errors.ts": "6299d538b2ed734bd5f0700d65556b19907c1f82d63cfd80f975d061ac3a6625",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/functional.ts": "d1c6e519813c9c569ba9f8302a29059a6d0c90601607478a420317c781f8b816",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/registry.ts": "ca267a51b147a3d64154646feecabc4471570a2790e3b458b24c5784fa7db6bc",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/suspension.ts": "897dc7d1e18631146f4be0e0cb52ff42ab22e527c10f06720930d8d29c546fa1",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/types.ts": "b226bea805fa1471171bfbc277350a0c3b40518295a816ccbe829f075da762e7",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/worker.ts": "1f32f2e6049773a6e9c66d3bb063cf9c1e5fc87617d333f8bae732bb6ba2c443",
+    "https://raw.githubusercontent.com/vski-ai/sdk/main/src/workflow-base.ts": "17df9a03596eeca5d1b5cd32866e7e3a7a9d4e4e8ee7a669390ec8302dd85a9d"
+  },
   "workspace": {
     "dependencies": [
-      "jsr:@std/assert@1"
+      "jsr:@std/assert@1",
+      "jsr:@std/cli@^1.0.26"
     ]
   }
 }

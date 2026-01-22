@@ -1,10 +1,15 @@
 // Copyright (c) 2025 Anton A Nesterov <an+vski@vski.sh>, VSKI License
 //
 
-import { RocketBaseClient } from "./client.ts";
+import type { RocketBaseClient } from "./client.ts";
 import { WorkflowRegistry } from "./registry.ts";
 import { WorkflowSuspension } from "./suspension.ts";
+import type { WorkflowJob } from "./types.ts";
 
+/**
+ * Worker class responsible for polling and executing workflow jobs.
+ * Connects to the RocketBase backend via WebSocket to receive job assignments.
+ */
 export class WorkflowWorker {
   private socket: WebSocket | null = null;
   private active = false;
@@ -12,8 +17,18 @@ export class WorkflowWorker {
   private stopCallback: (() => void) | null = null;
   private activeJobs = new Set<Promise<void>>();
 
+  /**
+   * Creates a new instance of WorkflowWorker.
+   * @param client - The RocketBase client instance.
+   */
   constructor(private client: RocketBaseClient) {}
 
+  /**
+   * Starts the worker for a specific workflow.
+   * @param workflowName - The name of the workflow to process.
+   * @param options - Options for concurrency and resuming pending runs.
+   * @returns A promise that resolves when the worker is stopped.
+   */
   async start(
     workflowName: string,
     options: { concurrency?: number; resume?: boolean } = {},
@@ -33,7 +48,11 @@ export class WorkflowWorker {
     });
   }
 
-  private async resumePending(workflowName: string) {
+  /**
+   * Resumes pending and running runs for the workflow.
+   * @param workflowName - The name of the workflow.
+   */
+  private async resumePending(workflowName: string): Promise<void> {
     // Fetch runs that are not completed/failed
     const pending = await this.client.workflow.listRuns({
       workflowName,
@@ -44,7 +63,7 @@ export class WorkflowWorker {
       status: "running",
     });
 
-    const all = [...pending.data, ...running.data];
+    const all = [...pending.items, ...running.items];
     console.log(`[Worker ${workflowName}] Resuming ${all.length} runs`);
 
     for (const run of all) {
@@ -52,7 +71,11 @@ export class WorkflowWorker {
     }
   }
 
-  async stop() {
+  /**
+   * Stops the worker, closing the connection and waiting for active jobs to complete.
+   * @returns A promise that resolves when the worker is fully stopped.
+   */
+  async stop(): Promise<void> {
     this.active = false;
     if (this.socket) {
       this.socket.onopen = null;
@@ -76,7 +99,11 @@ export class WorkflowWorker {
     }
   }
 
-  private connect(workflowName: string) {
+  /**
+   * Establishes a WebSocket connection to the workflow server.
+   * @param workflowName - The name of the workflow to subscribe to.
+   */
+  private connect(workflowName: string): void {
     if (!this.active) return;
     if (
       this.socket &&
@@ -127,7 +154,13 @@ export class WorkflowWorker {
     };
   }
 
-  async processJob(job: any) {
+  /**
+   * Processes a single job assignment.
+   * Reconstructs the workflow state and attempts to execute it.
+   * @param job - The job data received from the server.
+   * @returns A promise that resolves when the job processing is complete.
+   */
+  async processJob(job: WorkflowJob): Promise<void> {
     console.log(`[Worker ${this.workflowName}] Processing job ${job.id}`);
     const { runId, input } = job.data;
 

@@ -1,13 +1,35 @@
 // Copyright (c) 2025 Anton A Nesterov <an+vski@vski.sh>, VSKI License
 //
 
-import type { RealtimeEvent, SubscriptionOptions } from "./types.ts";
+import type {
+  AuthMethods,
+  AuthResponse,
+  CollectionConfig,
+  CronJob,
+  CronJobConfig,
+  DatabaseConfig,
+  Migration,
+  PaginatedList,
+  RealtimeEvent,
+  RecordData,
+  SubscriptionOptions,
+  WebhookLog,
+  WorkflowEvent,
+  WorkflowRun,
+  WorkflowStats,
+} from "./types.ts";
 import { WorkflowRegistry } from "./registry.ts";
 
+/**
+ * Main client for interacting with the RocketBase backend.
+ * Provides access to databases, collections, authentication, workflows, and realtime features.
+ */
 export class RocketBaseClient {
+  /** The base URL of the RocketBase server. */
   public baseUrl: string;
   private token: string | null = null;
   private apiKey: string | null = null;
+  /** The name of the database to use. */
   public dbName: string = "postgres"; // Changed to public for Worker access
   private adminDbName: string = "postgres";
   private realtimeSocket: WebSocket | null = null;
@@ -19,6 +41,10 @@ export class RocketBaseClient {
     }
   >();
 
+  /**
+   * Creates a new instance of the RocketBase client.
+   * @param baseUrl - The base URL of the RocketBase server (default: http://127.0.0.1:3000).
+   */
   constructor(baseUrl: string = "http://127.0.0.1:3000") {
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
     if (typeof window !== "undefined") {
@@ -27,11 +53,20 @@ export class RocketBaseClient {
     }
   }
 
-  getToken() {
+  /**
+   * Retrieves the current authentication token.
+   * @returns The JWT token or null if not set.
+   */
+  getToken(): string | null {
     return this.token;
   }
 
-  setToken(token: string | null) {
+  /**
+   * Sets the authentication token.
+   * Updates the local storage and manages the realtime connection.
+   * @param token - The new JWT token or null to clear it.
+   */
+  setToken(token: string | null): void {
     this.token = token;
     if (typeof window !== "undefined") {
       if (token) {
@@ -45,7 +80,11 @@ export class RocketBaseClient {
     }
   }
 
-  setApiKey(key: string | null) {
+  /**
+   * Sets the API key for backend-to-backend communication.
+   * @param key - The API key or null to clear it.
+   */
+  setApiKey(key: string | null): void {
     this.apiKey = key;
     if (typeof window !== "undefined") {
       if (key) {
@@ -56,21 +95,32 @@ export class RocketBaseClient {
     }
   }
 
-  setDb(db: string) {
+  /**
+   * Sets the target database for subsequent requests.
+   * @param db - The name of the database.
+   */
+  setDb(db: string): void {
     this.dbName = db;
     if (this.realtimeSocket) {
       this.realtimeSocket.close();
     }
   }
 
-  setAdminDb(db: string) {
+  /**
+   * Sets the target admin database for administrative requests.
+   * @param db - The name of the admin database (default: postgres).
+   */
+  setAdminDb(db: string): void {
     this.adminDbName = db;
     if (this.realtimeSocket) {
       this.realtimeSocket.close();
     }
   }
 
-  close() {
+  /**
+   * Closes the client and terminates any active realtime connections.
+   */
+  close(): void {
     if (this.realtimeSocket) {
       this.realtimeSocket.onopen = null;
       this.realtimeSocket.onmessage = null;
@@ -82,8 +132,9 @@ export class RocketBaseClient {
     this.subscriptions.clear();
   }
 
-  private get headers() {
-    const h: any = {
+  /** Headers for standard requests. */
+  private get headers(): Record<string, string> {
+    const h: Record<string, string> = {
       "Content-Type": "application/json",
       "x-dbname": this.dbName,
     };
@@ -92,8 +143,9 @@ export class RocketBaseClient {
     return h;
   }
 
-  private get adminHeaders() {
-    const h: any = {
+  /** Headers for administrative requests. */
+  private get adminHeaders(): Record<string, string> {
+    const h: Record<string, string> = {
       "Content-Type": "application/json",
       "x-dbname": this.adminDbName,
     };
@@ -102,23 +154,45 @@ export class RocketBaseClient {
     return h;
   }
 
-  get settings() {
+  /**
+   * Namespace for system settings and configuration (Databases, Collections).
+   * @returns An object with database and collection management methods.
+   */
+  get settings(): {
+    databases: {
+      list: () => Promise<string[]>;
+      create: (data: DatabaseConfig) => Promise<unknown>;
+      delete: (name: string) => Promise<boolean>;
+    };
+    collections: {
+      create: (data: CollectionConfig) => Promise<unknown>;
+      update: (id: string, data: Partial<CollectionConfig>) => Promise<unknown>;
+      delete: (id: string) => Promise<boolean>;
+      getList: () => Promise<PaginatedList<CollectionConfig>>;
+    };
+  } {
     // @ts-ignore:
     const self = this;
     return {
+      /**
+       * Database management operations.
+       */
       databases: {
-        list: async () => {
+        /**
+         * Lists all available databases.
+         */
+        list: async (): Promise<string[]> => {
           const res = await fetch(`${self.baseUrl}/api/databases`, {
             headers: self.headers,
           });
           if (!res.ok) throw new Error(await res.text());
           return res.json();
         },
-        create: async (data: {
-          name: string;
-          extensions?: string[];
-          initScript?: string;
-        }) => {
+        /**
+         * Creates a new database.
+         * @param data - Configuration for the new database.
+         */
+        create: async (data: DatabaseConfig): Promise<unknown> => {
           const res = await fetch(`${self.baseUrl}/api/databases`, {
             method: "POST",
             headers: self.headers,
@@ -127,7 +201,11 @@ export class RocketBaseClient {
           if (!res.ok) throw new Error(await res.text());
           return res.json();
         },
-        delete: async (name: string) => {
+        /**
+         * Deletes a database by name.
+         * @param name - The name of the database to delete.
+         */
+        delete: async (name: string): Promise<boolean> => {
           const res = await fetch(`${self.baseUrl}/api/databases/${name}`, {
             method: "DELETE",
             headers: self.headers,
@@ -137,8 +215,15 @@ export class RocketBaseClient {
           return true;
         },
       },
+      /**
+       * Collection management operations.
+       */
       collections: {
-        create: async (data: any) => {
+        /**
+         * Creates a new collection.
+         * @param data - The collection schema definition.
+         */
+        create: async (data: CollectionConfig): Promise<unknown> => {
           const res = await fetch(`${self.baseUrl}/api/collections`, {
             method: "POST",
             headers: self.headers,
@@ -147,7 +232,15 @@ export class RocketBaseClient {
           if (!res.ok) throw new Error(await res.text());
           return res.json();
         },
-        update: async (id: string, data: any) => {
+        /**
+         * Updates an existing collection.
+         * @param id - The ID or name of the collection.
+         * @param data - The fields to update.
+         */
+        update: async (
+          id: string,
+          data: Partial<CollectionConfig>,
+        ): Promise<unknown> => {
           const res = await fetch(`${self.baseUrl}/api/collections/${id}`, {
             method: "PATCH",
             headers: self.headers,
@@ -156,7 +249,11 @@ export class RocketBaseClient {
           if (!res.ok) throw new Error(await res.text());
           return res.json();
         },
-        delete: async (id: string) => {
+        /**
+         * Deletes a collection.
+         * @param id - The ID or name of the collection.
+         */
+        delete: async (id: string): Promise<boolean> => {
           const res = await fetch(`${self.baseUrl}/api/collections/${id}`, {
             method: "DELETE",
             headers: self.headers,
@@ -165,7 +262,10 @@ export class RocketBaseClient {
           await res.text();
           return true;
         },
-        getList: async () => {
+        /**
+         * Lists all collections.
+         */
+        getList: async (): Promise<PaginatedList<CollectionConfig>> => {
           const res = await fetch(`${self.baseUrl}/api/collections`, {
             headers: self.headers,
           });
@@ -176,11 +276,29 @@ export class RocketBaseClient {
     };
   }
 
-  get auth() {
+  /**
+   * Namespace for authentication operations (Login, Register, OAuth).
+   * @returns An object with authentication methods.
+   */
+  get auth(): {
+    login: (email: string, pass: string) => Promise<AuthResponse>;
+    register: (data: RecordData) => Promise<unknown>;
+    me: () => Promise<RecordData>;
+    listMethods: () => Promise<AuthMethods>;
+    authViaOAuth2: (
+      provider: string,
+      code: string,
+      redirectUrl: string,
+    ) => Promise<AuthResponse>;
+  } {
     const self = this;
     return {
-      // Login using the configured default auth collection
-      login: async (email: string, pass: string) => {
+      /**
+       * Login using the configured default auth collection.
+       * @param email - The user's email.
+       * @param pass - The user's password.
+       */
+      login: async (email: string, pass: string): Promise<AuthResponse> => {
         const res = await fetch(`${self.baseUrl}/api/auth/login`, {
           method: "POST",
           headers: self.headers,
@@ -191,8 +309,11 @@ export class RocketBaseClient {
         self.setToken(data.token);
         return data;
       },
-      // Register a new user in the configured default auth collection
-      register: async (data: any) => {
+      /**
+       * Register a new user in the configured default auth collection.
+       * @param data - The user registration data.
+       */
+      register: async (data: RecordData): Promise<unknown> => {
         const res = await fetch(`${self.baseUrl}/api/auth/register`, {
           method: "POST",
           headers: self.headers,
@@ -201,31 +322,37 @@ export class RocketBaseClient {
         if (!res.ok) throw new Error(await res.text());
         return res.json();
       },
-      // Get the profile of the currently logged in user
-      me: async () => {
-        // This assumes the token is valid
-        // We might need an endpoint /api/auth/me that resolves the user from the token
-        // independent of collection
+      /**
+       * Get the profile of the currently logged in user.
+       */
+      me: async (): Promise<RecordData> => {
         const res = await fetch(`${self.baseUrl}/api/auth/me`, {
           headers: self.headers,
         });
         if (!res.ok) throw new Error(await res.text());
         return res.json();
       },
-      // List available auth methods (OAuth providers)
-      listMethods: async () => {
+      /**
+       * List available auth methods (OAuth providers).
+       */
+      listMethods: async (): Promise<AuthMethods> => {
         const res = await fetch(`${self.baseUrl}/api/auth/methods`, {
           headers: self.headers,
         });
         if (!res.ok) throw new Error(await res.text());
         return res.json();
       },
-      // Login via OAuth2 code
+      /**
+       * Login via OAuth2 code.
+       * @param provider - The OAuth2 provider name (e.g., 'google', 'github').
+       * @param code - The authorization code returned by the provider.
+       * @param redirectUrl - The redirect URL used in the initial auth request.
+       */
       authViaOAuth2: async (
         provider: string,
         code: string,
         redirectUrl: string,
-      ) => {
+      ): Promise<AuthResponse> => {
         const res = await fetch(`${self.baseUrl}/api/auth/oauth2-login`, {
           method: "POST",
           headers: self.headers,
@@ -239,10 +366,26 @@ export class RocketBaseClient {
     };
   }
 
-  get keys() {
+  /**
+   * Namespace for API key management.
+   * @returns An object with API key management methods.
+   */
+  get keys(): {
+    generate: (data: {
+      name?: string;
+      enabled?: boolean;
+    }) => Promise<unknown>;
+  } {
     const self = this;
     return {
-      generate: async (data: any) => {
+      /**
+       * Generates a new API key.
+       * @param data - Configuration for the new key.
+       */
+      generate: async (data: {
+        name?: string;
+        enabled?: boolean;
+      }): Promise<unknown> => {
         const res = await fetch(`${self.baseUrl}/api/keys`, {
           method: "POST",
           headers: self.adminHeaders,
@@ -254,10 +397,30 @@ export class RocketBaseClient {
     };
   }
 
-  get admins() {
+  /**
+   * Namespace for admin-level operations.
+   * @returns An object with administrative methods.
+   */
+  get admins(): {
+    authWithPassword: (
+      identity: string,
+      password: string,
+    ) => Promise<AuthResponse>;
+    init: (data: { email: string; password: string }) => Promise<unknown>;
+    hasAdmins: () => Promise<{ hasAdmins: boolean }>;
+    me: () => Promise<RecordData>;
+  } {
     const self = this;
     return {
-      authWithPassword: async (identity: string, password: string) => {
+      /**
+       * Authenticates an admin user with email and password.
+       * @param identity - Admin email.
+       * @param password - Admin password.
+       */
+      authWithPassword: async (
+        identity: string,
+        password: string,
+      ): Promise<AuthResponse> => {
         const res = await fetch(
           `${self.baseUrl}/api/admins/auth-with-password`,
           {
@@ -271,7 +434,14 @@ export class RocketBaseClient {
         self.setToken(data.token);
         return data;
       },
-      init: async (data: any) => {
+      /**
+       * Initializes the first admin account.
+       * @param data - Admin registration data.
+       */
+      init: async (data: {
+        email: string;
+        password: string;
+      }): Promise<unknown> => {
         const res = await fetch(`${self.baseUrl}/api/admins/init`, {
           method: "POST",
           headers: self.headers,
@@ -282,7 +452,11 @@ export class RocketBaseClient {
         self.setToken(resData.token);
         return resData;
       },
-      hasAdmins: async () => {
+      /**
+       * Checks if any admin accounts exist.
+       * @returns Object containing a boolean `hasAdmins`.
+       */
+      hasAdmins: async (): Promise<{ hasAdmins: boolean }> => {
         const res = await fetch(`${self.baseUrl}/api/admins/has-admins`, {
           headers: self.headers,
         });
@@ -292,7 +466,10 @@ export class RocketBaseClient {
         }
         return res.json();
       },
-      me: async () => {
+      /**
+       * Gets the currently authenticated admin's profile.
+       */
+      me: async (): Promise<RecordData> => {
         const res = await fetch(`${self.baseUrl}/api/admins/me`, {
           headers: self.adminHeaders,
         });
@@ -302,17 +479,32 @@ export class RocketBaseClient {
     };
   }
 
-  get cron() {
+  /**
+   * Namespace for Cron job management.
+   * @returns An object with cron job management methods.
+   */
+  get cron(): {
+    list: () => Promise<CronJob[]>;
+    create: (data: CronJobConfig) => Promise<unknown>;
+    delete: (name: string) => Promise<boolean>;
+  } {
     const self = this;
     return {
-      list: async () => {
+      /**
+       * Lists all registered cron jobs.
+       */
+      list: async (): Promise<CronJob[]> => {
         const res = await fetch(`${self.baseUrl}/api/cron`, {
           headers: self.headers,
         });
         if (!res.ok) throw new Error(await res.text());
         return res.json();
       },
-      create: async (data: any) => {
+      /**
+       * Registers a new cron job.
+       * @param data - Cron job configuration (schedule, endpoint, etc.).
+       */
+      create: async (data: CronJobConfig): Promise<unknown> => {
         const res = await fetch(`${self.baseUrl}/api/cron`, {
           method: "POST",
           headers: self.headers,
@@ -321,7 +513,11 @@ export class RocketBaseClient {
         if (!res.ok) throw new Error(await res.text());
         return res.json();
       },
-      delete: async (name: string) => {
+      /**
+       * Deletes a cron job by name.
+       * @param name - The name of the cron job to delete.
+       */
+      delete: async (name: string): Promise<boolean> => {
         const res = await fetch(`${self.baseUrl}/api/cron/${name}`, {
           method: "DELETE",
           headers: self.headers,
@@ -333,9 +529,24 @@ export class RocketBaseClient {
     };
   }
 
-  get webhookLogs() {
+  /**
+   * Namespace for Webhook logs.
+   * @returns An object with webhook log access methods.
+   */
+  get webhookLogs(): {
+    list: (filters?: {
+      collection?: string;
+      status?: string;
+      page?: number;
+      perPage?: number;
+    }) => Promise<PaginatedList<WebhookLog>>;
+  } {
     const self = this;
     return {
+      /**
+       * Lists webhook execution logs with optional filtering.
+       * @param filters - Options to filter logs by collection, status, page, etc.
+       */
       list: async (
         filters: {
           collection?: string;
@@ -343,7 +554,7 @@ export class RocketBaseClient {
           page?: number;
           perPage?: number;
         } = {},
-      ) => {
+      ): Promise<PaginatedList<WebhookLog>> => {
         const params = new URLSearchParams();
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== "") {
@@ -362,10 +573,19 @@ export class RocketBaseClient {
     };
   }
 
-  get workflowStats() {
+  /**
+   * Namespace for Workflow statistics.
+   * @returns An object with workflow statistics methods.
+   */
+  get workflowStats(): {
+    get: () => Promise<WorkflowStats>;
+  } {
     const self = this;
     return {
-      get: async () => {
+      /**
+       * Retrieves aggregated statistics about workflow executions.
+       */
+      get: async (): Promise<WorkflowStats> => {
         const res = await fetch(`${self.baseUrl}/api/workflows/stats`, {
           headers: self.headers,
         });
@@ -375,21 +595,79 @@ export class RocketBaseClient {
     };
   }
 
-  collection(name: string) {
+  /**
+   * Returns a handler for a specific collection.
+   * Provides methods for record CRUD, search, and realtime subscriptions.
+   * @param name - The name of the collection.
+   * @returns A collection handler object.
+   */
+  collection<T = RecordData>(name: string): {
+    getList: (
+      page?: number,
+      perPage?: number,
+      options?: { filter?: string; expand?: string; sort?: string },
+    ) => Promise<PaginatedList<T>>;
+    getOne: (id: string, options?: { expand?: string }) => Promise<T>;
+    search: (
+      q: string,
+      options?: {
+        page?: number;
+        perPage?: number;
+        expand?: string;
+        snippet?: boolean;
+      },
+    ) => Promise<PaginatedList<T>>;
+    getView: (
+      slug: string,
+      options?: {
+        page?: number;
+        perPage?: number;
+        expand?: string;
+        filter?: string;
+        sort?: string;
+      },
+    ) => Promise<PaginatedList<T>>;
+    create: (data: RecordData | FormData | Partial<T>) => Promise<T>;
+    update: (
+      id: string,
+      data: RecordData | FormData | Partial<T>,
+    ) => Promise<T>;
+    bulkUpdate: (
+      ids: string[],
+      data: RecordData | Partial<T>,
+    ) => Promise<{ updated: string[] }>;
+    delete: (id: string) => Promise<boolean>;
+    bulkDelete: (ids: string[]) => Promise<{ deleted: string[] }>;
+    authWithPassword: (
+      identity: string,
+      password: string,
+    ) => Promise<AuthResponse>;
+    subscribe: (
+      callback: (e: RealtimeEvent<T>) => void,
+      options?: SubscriptionOptions,
+    ) => () => void;
+  } {
     const self = this;
 
     return {
+      /**
+       * Lists records in the collection with pagination and filtering.
+       * @param page - The page number (default: 1).
+       * @param perPage - Records per page (default: 30).
+       * @param options - Additional options like filter and expand.
+       */
       getList: async (
         page = 1,
         perPage = 30,
-        options: { filter?: string; expand?: string } = {},
-      ) => {
+        options: { filter?: string; expand?: string; sort?: string } = {},
+      ): Promise<PaginatedList<T>> => {
         const params = new URLSearchParams({
           page: String(page),
           perPage: String(perPage),
         });
         if (options.filter) params.append("filter", options.filter);
         if (options.expand) params.append("expand", options.expand);
+        if (options.sort) params.append("sort", options.sort);
 
         const res = await fetch(
           `${self.baseUrl}/api/collections/${name}/records?${params.toString()}`,
@@ -399,7 +677,15 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      getOne: async (id: string, options: { expand?: string } = {}) => {
+      /**
+       * Retrieves a single record by ID.
+       * @param id - The record ID.
+       * @param options - Options like expand.
+       */
+      getOne: async (
+        id: string,
+        options: { expand?: string } = {},
+      ): Promise<T> => {
         const params = new URLSearchParams();
         if (options.expand) params.append("expand", options.expand);
 
@@ -411,6 +697,11 @@ export class RocketBaseClient {
         return res.json();
       },
 
+      /**
+       * Searches for records using a full-text query.
+       * @param q - The search query.
+       * @param options - Pagination and expansion options.
+       */
       search: async (
         q: string,
         options: {
@@ -419,7 +710,7 @@ export class RocketBaseClient {
           expand?: string;
           snippet?: boolean;
         } = {},
-      ) => {
+      ): Promise<PaginatedList<T>> => {
         const params = new URLSearchParams({ q });
         if (options.page) params.append("page", String(options.page));
         if (options.perPage) params.append("perPage", String(options.perPage));
@@ -434,6 +725,11 @@ export class RocketBaseClient {
         return res.json();
       },
 
+      /**
+       * Retrieves records from a specific view.
+       * @param slug - The view slug.
+       * @param options - Pagination, filter, and sort options.
+       */
       getView: async (
         slug: string,
         options: {
@@ -443,7 +739,7 @@ export class RocketBaseClient {
           filter?: string;
           sort?: string;
         } = {},
-      ) => {
+      ): Promise<PaginatedList<T>> => {
         const params = new URLSearchParams();
         if (options.page) params.append("page", String(options.page));
         if (options.perPage) params.append("perPage", String(options.perPage));
@@ -459,7 +755,13 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      create: async (data: any) => {
+      /**
+       * Creates a new record in the collection.
+       * @param data - The record data.
+       */
+      create: async (
+        data: RecordData | FormData | Partial<T>,
+      ): Promise<T> => {
         const isFormData = data instanceof FormData;
         const h = { ...self.headers };
         if (isFormData) delete h["Content-Type"];
@@ -476,7 +778,15 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      update: async (id: string, data: any) => {
+      /**
+       * Updates an existing record.
+       * @param id - The record ID.
+       * @param data - The data to update.
+       */
+      update: async (
+        id: string,
+        data: RecordData | FormData | Partial<T>,
+      ): Promise<T> => {
         const isFormData = data instanceof FormData;
         const h = { ...self.headers };
         if (isFormData) delete h["Content-Type"];
@@ -493,7 +803,15 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      bulkUpdate: async (ids: string[], data: any) => {
+      /**
+       * Bulk updates multiple records.
+       * @param ids - The IDs of the records to update.
+       * @param data - The data to apply to all records.
+       */
+      bulkUpdate: async (
+        ids: string[],
+        data: RecordData | Partial<T>,
+      ): Promise<{ updated: string[] }> => {
         const res = await fetch(
           `${self.baseUrl}/api/collections/${name}/records/bulk`,
           {
@@ -506,7 +824,11 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      delete: async (id: string) => {
+      /**
+       * Deletes a record.
+       * @param id - The record ID.
+       */
+      delete: async (id: string): Promise<boolean> => {
         const res = await fetch(
           `${self.baseUrl}/api/collections/${name}/records/${id}`,
           {
@@ -519,7 +841,11 @@ export class RocketBaseClient {
         return true;
       },
 
-      bulkDelete: async (ids: string[]) => {
+      /**
+       * Bulk deletes multiple records.
+       * @param ids - The IDs of the records to delete.
+       */
+      bulkDelete: async (ids: string[]): Promise<{ deleted: string[] }> => {
         const res = await fetch(
           `${self.baseUrl}/api/collections/${name}/records/bulk`,
           {
@@ -532,7 +858,15 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      authWithPassword: async (identity: string, password: string) => {
+      /**
+       * Authenticates a user of this collection (e.g., 'users' collection) using a password.
+       * @param identity - The user identity (e.g., username or email).
+       * @param password - The user password.
+       */
+      authWithPassword: async (
+        identity: string,
+        password: string,
+      ): Promise<AuthResponse> => {
         if (name === "_superusers") {
           return self.admins.authWithPassword(identity, password);
         }
@@ -551,11 +885,17 @@ export class RocketBaseClient {
         return data;
       },
 
+      /**
+       * Subscribes to realtime changes in the collection.
+       * @param callback - Function called when an event occurs.
+       * @param options - Subscription options (filter, etc.).
+       * @returns A function to unsubscribe.
+       */
       subscribe: (
-        callback: (e: RealtimeEvent) => void,
+        callback: (e: RealtimeEvent<T>) => void,
         options?: SubscriptionOptions,
-      ) => {
-        self.subscriptions.set(name, { callback, options });
+      ): () => void => {
+        self.subscriptions.set(name, { callback: callback as any, options });
         self.connectRealtime();
 
         if (self.realtimeSocket?.readyState === 1) {
@@ -571,7 +911,8 @@ export class RocketBaseClient {
     };
   }
 
-  private connectRealtime() {
+  /** Connects to the realtime WebSocket server. */
+  private connectRealtime(): void {
     if (typeof WebSocket === "undefined") return;
     if (
       this.realtimeSocket &&
@@ -633,15 +974,40 @@ export class RocketBaseClient {
     };
   }
 
-  get migrations() {
+  /**
+   * Namespace for database migrations.
+   * @returns An object with migration methods.
+   */
+  get migrations(): {
+    getList: (
+      page?: number,
+      perPage?: number,
+      options?: { filter?: string; sort?: string },
+    ) => Promise<PaginatedList<Migration>>;
+    create: (data: {
+      name: string;
+      appliedAt: string;
+      batch?: number;
+    }) => Promise<Migration>;
+    delete: (id: string) => Promise<boolean>;
+    run: (
+      migrations: {
+        name: string;
+        up: (sdk: RocketBaseClient) => Promise<void>;
+      }[],
+    ) => Promise<void>;
+  } {
     const self = this;
     const name = "_migrations";
     return {
+      /**
+       * Lists applied migrations.
+       */
       getList: async (
         page = 1,
         perPage = 500,
         options: { filter?: string; sort?: string } = {},
-      ) => {
+      ): Promise<PaginatedList<Migration>> => {
         const params = new URLSearchParams({
           page: String(page),
           perPage: String(perPage),
@@ -656,11 +1022,14 @@ export class RocketBaseClient {
         if (!res.ok) throw new Error(await res.text());
         return res.json();
       },
+      /**
+       * Creates a migration record.
+       */
       create: async (data: {
         name: string;
         appliedAt: string;
         batch?: number;
-      }) => {
+      }): Promise<Migration> => {
         const res = await fetch(
           `${self.baseUrl}/api/collections/${name}/records`,
           {
@@ -672,7 +1041,10 @@ export class RocketBaseClient {
         if (!res.ok) throw new Error(await res.text());
         return res.json();
       },
-      delete: async (id: string) => {
+      /**
+       * Deletes a migration record.
+       */
+      delete: async (id: string): Promise<boolean> => {
         const res = await fetch(
           `${self.baseUrl}/api/collections/${name}/records/${id}`,
           {
@@ -684,12 +1056,16 @@ export class RocketBaseClient {
         await res.text();
         return true;
       },
+      /**
+       * Runs a list of pending migrations.
+       * @param migrations - List of migration objects with `up` functions.
+       */
       run: async (
         migrations: {
           name: string;
           up: (sdk: RocketBaseClient) => Promise<void>;
         }[],
-      ) => {
+      ): Promise<void> => {
         const applied = await self.migrations.getList(1, 500);
         const appliedNames = new Set(applied.items.map((m: any) => m.name));
 
@@ -708,13 +1084,72 @@ export class RocketBaseClient {
     };
   }
 
-  get workflow() {
+  /**
+   * Namespace for Workflow operations (Runs, Events, Signals, Queues).
+   * @returns An object with workflow management methods.
+   */
+  get workflow(): {
+    createRun: (data: Partial<WorkflowRun>) => Promise<WorkflowRun>;
+    trigger: (
+      workflowName: string,
+      input: unknown[],
+      options?: any,
+    ) => Promise<WorkflowRun>;
+    resume: (runId: string) => Promise<WorkflowRun>;
+    getRun: (runId: string) => Promise<WorkflowRun>;
+    updateRun: (
+      runId: string,
+      data: Partial<WorkflowRun>,
+    ) => Promise<WorkflowRun>;
+    listRuns: (params?: {
+      workflowName?: string;
+      status?: string;
+      limit?: number;
+      cursor?: string;
+    }) => Promise<PaginatedList<WorkflowRun>>;
+    createStep: (runId: string, data: any) => Promise<unknown>;
+    updateStep: (runId: string, stepId: string, data: any) => Promise<unknown>;
+    createEvent: (
+      runId: string,
+      data: {
+        eventType: string;
+        correlationId?: string;
+        payload: Record<string, unknown>;
+      },
+    ) => Promise<WorkflowEvent>;
+    listEvents: (runId: string) => Promise<WorkflowEvent[]>;
+    pollQueue: (queueName: string) => Promise<unknown>;
+    sendSignal: (
+      runId: string,
+      signalName: string,
+      data: any,
+      correlationId?: string,
+    ) => Promise<boolean>;
+    queueMessage: (
+      queueName: string,
+      message: any,
+      opts?: any,
+    ) => Promise<unknown>;
+    ack: (messageId: string) => Promise<unknown>;
+    nack: (messageId: string) => Promise<unknown>;
+    touch: (messageId: string) => Promise<unknown>;
+    hooks: {
+      create: (runId: string, data: any) => Promise<unknown>;
+      get: (id: string) => Promise<unknown>;
+      getByToken: (token: string) => Promise<unknown>;
+      list: (runId: string) => Promise<unknown>;
+      dispose: (id: string) => Promise<unknown>;
+    };
+  } {
     const self = this;
 
     const base = `${self.baseUrl}/api/workflows`;
 
     return {
-      createRun: async (data: any) => {
+      /**
+       * Creates a new workflow run directly.
+       */
+      createRun: async (data: Partial<WorkflowRun>): Promise<WorkflowRun> => {
         const res = await fetch(`${base}/runs`, {
           method: "POST",
 
@@ -728,11 +1163,17 @@ export class RocketBaseClient {
         return res.json();
       },
 
+      /**
+       * Triggers a workflow execution.
+       * @param workflowName - Name of the workflow.
+       * @param input - Input arguments.
+       * @param options - Execution options.
+       */
       trigger: async (
         workflowName: string,
-        input: any[],
+        input: unknown[],
         options: any = {},
-      ) => {
+      ): Promise<WorkflowRun> => {
         const Class = WorkflowRegistry.get(workflowName);
         const defaultOptions = Class?.prototype?.workflowOptions || {};
         const mergedOptions = { ...defaultOptions, ...options };
@@ -759,7 +1200,11 @@ export class RocketBaseClient {
         return run;
       },
 
-      resume: async (runId: string) => {
+      /**
+       * Resumes a suspended workflow run.
+       * @param runId - The run ID.
+       */
+      resume: async (runId: string): Promise<WorkflowRun> => {
         const run = await self.workflow.getRun(runId);
 
         await self.workflow.queueMessage(`__wkf_workflow_${run.workflowName}`, {
@@ -775,7 +1220,10 @@ export class RocketBaseClient {
         return run;
       },
 
-      getRun: async (runId: string) => {
+      /**
+       * Retrieves a workflow run by ID.
+       */
+      getRun: async (runId: string): Promise<WorkflowRun> => {
         const res = await fetch(`${base}/runs/${runId}`, {
           headers: self.headers,
         });
@@ -785,7 +1233,13 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      updateRun: async (runId: string, data: any) => {
+      /**
+       * Updates a workflow run.
+       */
+      updateRun: async (
+        runId: string,
+        data: Partial<WorkflowRun>,
+      ): Promise<WorkflowRun> => {
         const res = await fetch(`${base}/runs/${runId}`, {
           method: "PATCH",
 
@@ -799,6 +1253,9 @@ export class RocketBaseClient {
         return res.json();
       },
 
+      /**
+       * Lists workflow runs.
+       */
       listRuns: async (
         params: {
           workflowName?: string;
@@ -809,7 +1266,7 @@ export class RocketBaseClient {
 
           cursor?: string;
         } = {},
-      ) => {
+      ): Promise<PaginatedList<WorkflowRun>> => {
         const p = new URLSearchParams();
 
         if (params.workflowName) p.append("workflowName", params.workflowName);
@@ -829,7 +1286,10 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      createStep: async (runId: string, data: any) => {
+      /**
+       * Records a new workflow step.
+       */
+      createStep: async (runId: string, data: any): Promise<unknown> => {
         const res = await fetch(`${base}/steps`, {
           method: "POST",
 
@@ -843,7 +1303,14 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      updateStep: async (runId: string, stepId: string, data: any) => {
+      /**
+       * Updates a workflow step.
+       */
+      updateStep: async (
+        runId: string,
+        stepId: string,
+        data: any,
+      ): Promise<unknown> => {
         const res = await fetch(`${base}/steps/${runId}/${stepId}`, {
           method: "PATCH",
 
@@ -857,7 +1324,17 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      createEvent: async (runId: string, data: any) => {
+      /**
+       * Creates a workflow event.
+       */
+      createEvent: async (
+        runId: string,
+        data: {
+          eventType: string;
+          correlationId?: string;
+          payload: Record<string, unknown>;
+        },
+      ): Promise<WorkflowEvent> => {
         const res = await fetch(`${base}/events`, {
           method: "POST",
 
@@ -871,7 +1348,10 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      listEvents: async (runId: string) => {
+      /**
+       * Lists events for a workflow run.
+       */
+      listEvents: async (runId: string): Promise<WorkflowEvent[]> => {
         const res = await fetch(`${base}/runs/${runId}/events`, {
           headers: self.headers,
         });
@@ -881,7 +1361,10 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      pollQueue: async (queueName: string) => {
+      /**
+       * Polls a queue for a message.
+       */
+      pollQueue: async (queueName: string): Promise<unknown> => {
         const res = await fetch(`${base}/queue/${queueName}`, {
           headers: self.headers,
         });
@@ -893,12 +1376,19 @@ export class RocketBaseClient {
         return text ? JSON.parse(text) : null;
       },
 
+      /**
+       * Sends a signal to a running workflow.
+       * @param runId - The run ID.
+       * @param signalName - The signal name.
+       * @param data - The signal payload.
+       * @param correlationId - Optional correlation ID.
+       */
       sendSignal: async (
         runId: string,
         signalName: string,
         data: any,
         correlationId?: string,
-      ) => {
+      ): Promise<boolean> => {
         // 1. Create signal event
 
         await self.workflow.createEvent(runId, {
@@ -927,7 +1417,14 @@ export class RocketBaseClient {
         return true;
       },
 
-      queueMessage: async (queueName: string, message: any, opts?: any) => {
+      /**
+       * Enqueues a message.
+       */
+      queueMessage: async (
+        queueName: string,
+        message: any,
+        opts?: any,
+      ): Promise<unknown> => {
         const res = await fetch(`${base}/queue`, {
           method: "POST",
 
@@ -941,7 +1438,10 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      ack: async (messageId: string) => {
+      /**
+       * Acknowledges a message (removes it from queue).
+       */
+      ack: async (messageId: string): Promise<unknown> => {
         const res = await fetch(`${base}/queue/ack`, {
           method: "POST",
 
@@ -955,7 +1455,10 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      nack: async (messageId: string) => {
+      /**
+       * Negative acknowledges a message (returns it to queue).
+       */
+      nack: async (messageId: string): Promise<unknown> => {
         const res = await fetch(`${base}/queue/nack`, {
           method: "POST",
 
@@ -969,7 +1472,10 @@ export class RocketBaseClient {
         return res.json();
       },
 
-      touch: async (messageId: string) => {
+      /**
+       * Touches a message (extends visibility timeout).
+       */
+      touch: async (messageId: string): Promise<unknown> => {
         const res = await fetch(`${base}/queue/touch`, {
           method: "POST",
 
@@ -983,8 +1489,14 @@ export class RocketBaseClient {
         return res.json();
       },
 
+      /**
+       * Namespace for workflow hooks.
+       */
       hooks: {
-        create: async (runId: string, data: any) => {
+        /**
+         * Creates a new hook for a workflow run.
+         */
+        create: async (runId: string, data: any): Promise<unknown> => {
           const res = await fetch(`${base}/hooks`, {
             method: "POST",
 
@@ -998,7 +1510,10 @@ export class RocketBaseClient {
           return res.json();
         },
 
-        get: async (id: string) => {
+        /**
+         * Gets a hook by ID.
+         */
+        get: async (id: string): Promise<unknown> => {
           const res = await fetch(`${base}/hooks/${id}`, {
             headers: self.headers,
           });
@@ -1008,7 +1523,10 @@ export class RocketBaseClient {
           return res.json();
         },
 
-        getByToken: async (token: string) => {
+        /**
+         * Gets a hook by token.
+         */
+        getByToken: async (token: string): Promise<unknown> => {
           const res = await fetch(`${base}/hooks?token=${token}`, {
             headers: self.headers,
           });
@@ -1018,7 +1536,10 @@ export class RocketBaseClient {
           return res.json();
         },
 
-        list: async (runId: string) => {
+        /**
+         * Lists hooks for a workflow run.
+         */
+        list: async (runId: string): Promise<unknown> => {
           const res = await fetch(`${base}/hooks?runId=${runId}`, {
             headers: self.headers,
           });
@@ -1028,7 +1549,10 @@ export class RocketBaseClient {
           return res.json();
         },
 
-        dispose: async (id: string) => {
+        /**
+         * Disposes/Deletes a hook.
+         */
+        dispose: async (id: string): Promise<unknown> => {
           const res = await fetch(`${base}/hooks/${id}`, {
             method: "DELETE",
 
@@ -1043,7 +1567,18 @@ export class RocketBaseClient {
     };
   }
 
-  async gate(name: string, data?: any, options?: RequestInit) {
+  /**
+   * Calls a Gate (custom API endpoint) defined in the backend.
+   * @param name - The name of the gate to call.
+   * @param data - The data payload to send (optional).
+   * @param options - Additional fetch options (optional).
+   * @returns A promise that resolves to the fetch Response.
+   */
+  async gate(
+    name: string,
+    data?: any,
+    options?: RequestInit,
+  ): Promise<Response> {
     const fetchOptions: RequestInit = {
       method: "POST",
 

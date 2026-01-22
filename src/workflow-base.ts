@@ -3,28 +3,58 @@
 
 import type { RocketBaseClient } from "./client.ts";
 import { WorkflowSuspension } from "./suspension.ts";
+import type { StepOptions, WorkflowEvent, WorkflowOptions } from "./types.ts";
 
+/**
+ * Base class for all workflow implementations.
+ * Provides the core logic for step execution, state management, idempotency, and signal handling.
+ * Workflows extending this class (or using the functional wrapper) inherit these capabilities.
+ */
 export class WorkflowBase {
+  /** The RocketBase client instance used for API calls. */
   public client!: RocketBaseClient;
+  /** Unique identifier for the current workflow run. */
   public runId: string = "";
+  /** Name of the workflow. */
   public workflowName: string = "unknown";
+  /** Options used for the workflow execution. */
+  public workflowOptions: WorkflowOptions = {};
 
-  public history = new Map<string, any>();
+  /** History of step results, indexed by step correlation ID. */
+  public history = new Map<string, unknown>();
+  /** Set of successfully completed step IDs. */
   public completedSteps = new Set<string>();
+  /** Stack of rollback method names to call if the workflow fails. */
   public rollbackStack: string[] = [];
+  /** Map tracking the number of attempts for each step ID. */
   public stepAttempts = new Map<string, number>();
 
-  public callCounter = 0;
+  /** Counter for generating sequential IDs for steps and sleeps. */
+  public callCounter: number = 0;
+  /** Buffered signal data, indexed by signal name. */
   public signalQueues = new Map<string, any[]>();
+  /** Cursors for signal queues to handle multiple waits for the same signal. */
   public signalCursors = new Map<string, number>();
-  public isSuspended = false;
+  /** Flag indicating if the workflow is currently suspended. */
+  public isSuspended: boolean = false;
+  /** Set of step IDs that have been invoked during the current execution. */
   public invokedSteps = new Set<string>();
+  /** Set of event IDs that have been emitted to the backend. */
   public emittedEvents = new Set<string>();
 
+  /**
+   * Creates a new instance of WorkflowBase.
+   * @param client - Optional RocketBase client instance.
+   */
   constructor(client?: RocketBaseClient) {
     if (client) this.client = client;
   }
 
+  /**
+   * Executes multiple steps in parallel.
+   * @param steps - An array of functions returning promises to be executed concurrently.
+   * @returns An array of results from the executed steps.
+   */
   async parallel<T>(steps: (() => Promise<T>)[]): Promise<T[]> {
     return await Promise.all(steps.map((s) => s()));
   }
@@ -33,12 +63,21 @@ export class WorkflowBase {
    * Generates a sequential ID for steps or sleeps that don't have a manual ID.
    * NOTE: This is order-dependent. Adding or removing steps will shift these IDs
    * and can break long-running workflows during replay.
+   * @param prefix - The prefix for the ID (e.g., "step", "sleep").
+   * @returns A generated unique ID.
    */
-  public getSequentialId(prefix: string) {
+  public getSequentialId(prefix: string): string {
     const id = `${prefix}-${this.callCounter++}`;
     return id;
   }
 
+  /**
+   * Pauses execution for a specified duration.
+   * This method supports idempotency and replay.
+   * @param duration - The duration to sleep in milliseconds or as a string (e.g., "1s", "5m").
+   * @returns A promise that resolves when the sleep is completed.
+   * @throws {WorkflowSuspension} When the sleep starts, suspending execution until the duration passes.
+   */
   async sleep(duration: number | string): Promise<void> {
     const id = this.getSequentialId("sleep");
     if (this.completedSteps.has(id)) return;
@@ -82,6 +121,13 @@ export class WorkflowBase {
     throw new WorkflowSuspension(`Sleeping for ${ms}ms`);
   }
 
+  /**
+   * Pauses execution until a specific signal is received.
+   * This method supports idempotency and replay.
+   * @param name - The name of the signal to wait for.
+   * @returns The data payload associated with the signal.
+   * @throws {WorkflowSuspension} When waiting for the signal, suspending execution until it arrives.
+   */
   async waitForSignal<T = any>(name: string): Promise<T> {
     const id = this.getSequentialId(`signal-${name}`);
     if (this.history.has(id)) {
@@ -127,7 +173,13 @@ export class WorkflowBase {
     throw new WorkflowSuspension(`Waiting for signal: ${name}`);
   }
 
-  async runRollback(error: any) {
+  /**
+   * Executes the rollback stack in reverse order.
+   * This is called when a workflow fails and needs to compensate for completed steps.
+   * @param error - The error that triggered the rollback.
+   * @returns A promise that resolves when the rollback is complete.
+   */
+  async runRollback(error: any): Promise<void> {
     const accumulator: Record<string, any> = {};
     const stack = [...this.rollbackStack];
     while (stack.length > 0) {
@@ -144,7 +196,12 @@ export class WorkflowBase {
     }
   }
 
-  rebuildState(events: any[]) {
+  /**
+   * Reconstructs the workflow state from a list of events.
+   * Used when resuming a workflow or replaying history.
+   * @param events - The list of events from the workflow run.
+   */
+  rebuildState(events: WorkflowEvent[]): void {
     this.history.clear();
     this.completedSteps.clear();
     this.invokedSteps.clear();
@@ -162,36 +219,48 @@ export class WorkflowBase {
       }
       switch (event.eventType) {
         case "step_completed":
-          this.completedSteps.add(event.correlationId);
-          this.history.set(event.correlationId, payload.output);
+          this.completedSteps.add(event.correlationId!);
+          this.history.set(event.correlationId!, payload.output);
           break;
         case "wait_completed":
-          this.completedSteps.add(event.correlationId);
+          this.completedSteps.add(event.correlationId!);
           break;
         case "signal_received":
-          this.history.set(event.correlationId, payload.data);
+          this.history.set(event.correlationId!, payload.data);
           if (payload.name) {
-            if (!this.signalQueues.has(payload.name)) {
-              this.signalQueues.set(payload.name, []);
+            const name = payload.name as string;
+            if (!this.signalQueues.has(name)) {
+              this.signalQueues.set(name, []);
             }
-            this.signalQueues.get(payload.name)!.push(payload.data);
+            this.signalQueues.get(name)!.push(payload.data);
           }
           break;
         case "rollback_registered":
-          this.rollbackStack.push(payload.method);
+          this.rollbackStack.push(payload.method as string);
           break;
         case "step_retrying":
-          this.stepAttempts.set(event.correlationId, payload.attempt);
+          this.stepAttempts.set(
+            event.correlationId!,
+            payload.attempt as number,
+          );
           break;
       }
     }
   }
 
+  /**
+   * Executes a single step within the workflow with idempotency, retries, and rollback support.
+   * @param id - The unique identifier for the step.
+   * @param fn - The function implementing the step logic.
+   * @param args - Arguments to pass to the function.
+   * @param options - Options for retries, rollback, and timeout.
+   * @returns The result of the step execution.
+   */
   async executeStep<T>(
     id: string,
     fn: (...args: any[]) => Promise<T>,
     args: any[],
-    options: { retries?: number; rollback?: string[]; timeout?: string } = {},
+    options: StepOptions = {},
   ): Promise<T> {
     if (!this.runId) return fn.apply(this, args);
 
@@ -202,7 +271,7 @@ export class WorkflowBase {
     }
     this.invokedSteps.add(id);
 
-    if (this.completedSteps.has(id)) return this.history.get(id);
+    if (this.completedSteps.has(id)) return this.history.get(id) as T;
 
     if (options.rollback) {
       for (const method of options.rollback) {

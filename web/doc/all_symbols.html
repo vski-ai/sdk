@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>All Symbols - VSKI SDK documentation</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="doc-current-file" content="">
+    <link rel="stylesheet" href=".&#x2F;styles.css">
+    <link rel="stylesheet" href=".&#x2F;page.css">
+    <link id="ddocResetStylesheet" rel="stylesheet" href=".&#x2F;reset.css">
+    <link href="./comrak.css" rel="stylesheet" />
+    <link href="./prism.css" rel="stylesheet" />
+    <script src="./prism.js"></script>
+    <script src=".&#x2F;script.js" defer></script>
+    <script src=".&#x2F;darkmode_toggle.js"></script>
+    <script src=".&#x2F;search_index.js" defer></script>
+    <script src=".&#x2F;fuse.js" defer></script>
+    <script src=".&#x2F;search.js" defer></script>
+  </head>
+  <body>
+    <div class="ddoc">
+      <div>
+        <nav id="topnav">
+          <div class="h-full">
+            <div class="flex items-center">
+              <ul class="breadcrumbs">
+                <li><a href=".&#x2F;" class="contextLink">VSKI SDK</a></li><span
+                  class="text-black dark:text-white"
+                ><svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M5.76748 11.8159C5.5378 11.577 5.54525 11.1972 5.78411 10.9675L8.93431 8L5.78411 5.0325C5.54525 4.80282 5.5378 4.423 5.76748 4.18413C5.99715 3.94527 6.37698 3.93782 6.61584 4.1675L10.2158 7.5675C10.3335 7.68062 10.4 7.83679 10.4 8C10.4 8.16321 10.3335 8.31938 10.2158 8.4325L6.61584 11.8325C6.37698 12.0622 5.99715 12.0547 5.76748 11.8159Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </span><li>all symbols</li>
+              </ul>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                id="theme-toggle"
+                type="button"
+                aria-label="Toggle dark mode"
+                style="display: none"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path
+                    d="M12 1.992a10 10 0 1 0 9.236 13.838c.341 -.82 -.476 -1.644 -1.298 -1.31a6.5 6.5 0 0 1 -6.864 -10.787l.077 -.08c.551 -.63 .113 -1.653 -.758 -1.653h-.266l-.068 -.006l-.06 -.002z"
+                  />
+                </svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  class="hidden"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path
+                    d="M12 19a1 1 0 0 1 .993 .883l.007 .117v1a1 1 0 0 1 -1.993 .117l-.007 -.117v-1a1 1 0 0 1 1 -1z"
+                  />
+                  <path
+                    d="M18.313 16.91l.094 .083l.7 .7a1 1 0 0 1 -1.32 1.497l-.094 -.083l-.7 -.7a1 1 0 0 1 1.218 -1.567l.102 .07z"
+                  />
+                  <path
+                    d="M7.007 16.993a1 1 0 0 1 .083 1.32l-.083 .094l-.7 .7a1 1 0 0 1 -1.497 -1.32l.083 -.094l.7 -.7a1 1 0 0 1 1.414 0z"
+                  />
+                  <path
+                    d="M4 11a1 1 0 0 1 .117 1.993l-.117 .007h-1a1 1 0 0 1 -.117 -1.993l.117 -.007h1z"
+                  />
+                  <path
+                    d="M21 11a1 1 0 0 1 .117 1.993l-.117 .007h-1a1 1 0 0 1 -.117 -1.993l.117 -.007h1z"
+                  />
+                  <path
+                    d="M6.213 4.81l.094 .083l.7 .7a1 1 0 0 1 -1.32 1.497l-.094 -.083l-.7 -.7a1 1 0 0 1 1.217 -1.567l.102 .07z"
+                  />
+                  <path
+                    d="M19.107 4.893a1 1 0 0 1 .083 1.32l-.083 .094l-.7 .7a1 1 0 0 1 -1.497 -1.32l.083 -.094l.7 -.7a1 1 0 0 1 1.414 0z"
+                  />
+                  <path
+                    d="M12 2a1 1 0 0 1 .993 .883l.007 .117v1a1 1 0 0 1 -1.993 .117l-.007 -.117v-1a1 1 0 0 1 1 -1z"
+                  />
+                  <path
+                    d="M12 7a5 5 0 1 1 -4.995 5.217l-.005 -.217l.005 -.217a5 5 0 0 1 4.995 -4.783z"
+                  />
+                </svg>
+              </button>
+
+              <input
+                type="text"
+                id="searchbar"
+                style="display: none"
+                class="py-2 px-2.5 mx-1 rounded text-sm border border-gray-300 bg-transparent dark:bg-gray-800 dark:border-gray-700"
+              />
+            </div>
+          </div>
+        </nav>
+        <div id="searchResults"></div>
+        <div id="content">
+          <main>
+            <div class="space-y-7" id="">
+              <section class="section" id="default">
+                <div>
+                  <h2 class="anchorable mb-1">
+                    <a
+                      href="#default"
+                      class="anchor"
+                      aria-label="Anchor"
+                      tabIndex="-1"
+                    ><svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <g clip-path="url(#clip0_1081_1237)">
+                          <path
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M6.80328 2.8656C6.68736 2.99 6.62425 3.15454 6.62725 3.32456C6.63025 3.49457 6.69913 3.65678 6.81936 3.77702C6.9396 3.89725 7.10181 3.96613 7.27182 3.96913C7.44184 3.97213 7.60638 3.90902 7.73078 3.7931L8.82453 2.69935C8.98712 2.53676 9.18015 2.40778 9.39259 2.31978C9.60503 2.23179 9.83272 2.1865 10.0627 2.1865C10.2926 2.1865 10.5203 2.23179 10.7327 2.31978C10.9452 2.40778 11.1382 2.53676 11.3008 2.69935C11.4634 2.86194 11.5923 3.05497 11.6803 3.2674C11.7683 3.47984 11.8136 3.70753 11.8136 3.93747C11.8136 4.16741 11.7683 4.3951 11.6803 4.60754C11.5923 4.81998 11.4634 5.013 11.3008 5.1756L9.11328 7.3631C8.95075 7.52581 8.75775 7.65488 8.5453 7.74295C8.33285 7.83102 8.10513 7.87635 7.87516 7.87635C7.64518 7.87635 7.41746 7.83102 7.20501 7.74295C6.99256 7.65488 6.79956 7.52581 6.63703 7.3631C6.51263 7.24718 6.34809 7.18407 6.17807 7.18707C6.00806 7.19007 5.84585 7.25894 5.72561 7.37918C5.60538 7.49942 5.5365 7.66163 5.5335 7.83164C5.5305 8.00165 5.59361 8.1662 5.70953 8.2906C5.99391 8.57501 6.33154 8.80062 6.70312 8.95455C7.0747 9.10847 7.47296 9.18769 7.87516 9.18769C8.27736 9.18769 8.67562 9.10847 9.0472 8.95455C9.41878 8.80062 9.7564 8.57501 10.0408 8.2906L12.2283 6.1031C12.8026 5.52874 13.1253 4.74974 13.1253 3.93747C13.1253 3.12521 12.8026 2.34621 12.2283 1.77185C11.6539 1.19749 10.8749 0.874817 10.0627 0.874817C9.25039 0.874817 8.47139 1.19749 7.89703 1.77185L6.80328 2.8656ZM2.69953 11.3006C2.53682 11.1381 2.40774 10.9451 2.31968 10.7326C2.23161 10.5202 2.18628 10.2924 2.18628 10.0625C2.18628 9.8325 2.23161 9.60477 2.31968 9.39233C2.40774 9.17988 2.53682 8.98688 2.69953 8.82435L4.88703 6.63685C5.04956 6.47414 5.24256 6.34506 5.45501 6.25699C5.66746 6.16893 5.89518 6.1236 6.12516 6.1236C6.35513 6.1236 6.58285 6.16893 6.7953 6.25699C7.00775 6.34506 7.20075 6.47414 7.36328 6.63685C7.48768 6.75277 7.65223 6.81588 7.82224 6.81288C7.99225 6.80988 8.15446 6.741 8.2747 6.62077C8.39494 6.50053 8.46381 6.33832 8.46681 6.1683C8.46981 5.99829 8.4067 5.83375 8.29078 5.70935C8.0064 5.42494 7.66878 5.19933 7.2972 5.0454C6.92562 4.89148 6.52736 4.81225 6.12516 4.81225C5.72296 4.81225 5.3247 4.89148 4.95312 5.0454C4.58154 5.19933 4.24391 5.42494 3.95953 5.70935L1.77203 7.89685C1.19767 8.47121 0.875 9.25021 0.875 10.0625C0.875 10.8747 1.19767 11.6537 1.77203 12.2281C2.34639 12.8025 3.12539 13.1251 3.93766 13.1251C4.74992 13.1251 5.52892 12.8025 6.10328 12.2281L7.19703 11.1343C7.31295 11.0099 7.37606 10.8454 7.37306 10.6754C7.37006 10.5054 7.30119 10.3432 7.18095 10.2229C7.06071 10.1027 6.8985 10.0338 6.72849 10.0308C6.55848 10.0278 6.39393 10.0909 6.26953 10.2068L5.17578 11.3006C5.01325 11.4633 4.82025 11.5924 4.6078 11.6805C4.39535 11.7685 4.16763 11.8138 3.93766 11.8138C3.70768 11.8138 3.47996 11.7685 3.26751 11.6805C3.05506 11.5924 2.86206 11.4633 2.69953 11.3006Z"
+                            fill="currentColor"
+                          />
+                        </g>
+                        <defs>
+                          <clipPath id="clip0_1081_1237">
+                            <rect width="14" height="14" fill="white" />
+                          </clipPath>
+                        </defs>
+                      </svg>
+                    </a>
+                    <a href=".&#x2F;" class="contextLink">default</a>
+                  </h2>
+                </div>
+                <div class="namespaceSection">
+                  <div id="namespace_authmethods" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;AuthMethods.html"
+                        title="AuthMethods"
+                      >AuthMethods</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Details about available authentication methods.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;AuthMethods.html#property_emailpassword"
+                          >emailPassword</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;AuthMethods.html#property_oauth2"
+                          >oauth2</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_authresponse" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;AuthResponse.html"
+                        title="AuthResponse"
+                      >AuthResponse</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Response from an authentication request.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;AuthResponse.html#property_token"
+                          >token</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;AuthResponse.html#property_user"
+                          >user</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_collectionconfig" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html"
+                        title="CollectionConfig"
+                      >CollectionConfig</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Configuration for a collection.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_createrule"
+                          >createRule</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_deleterule"
+                          >deleteRule</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_fieldrules"
+                          >fieldRules</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_fields"
+                          >fields</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_ftsindexes"
+                          >ftsIndexes</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_id"
+                          >id</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_indexes"
+                          >indexes</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_listrule"
+                          >listRule</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_name"
+                          >name</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_options"
+                          >options</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_realtime"
+                          >realtime</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_system"
+                          >system</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_tags"
+                          >tags</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_triggers"
+                          >triggers</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_type"
+                          >type</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_updaterule"
+                          >updateRule</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_viewrule"
+                          >viewRule</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CollectionConfig.html#property_views"
+                          >views</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_cronjob" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJob.html"
+                        title="CronJob"
+                      >CronJob</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Represents a registered cron job.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJob.html#property_active"
+                          >active</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJob.html#property_command"
+                          >command</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJob.html#property_database"
+                          >database</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJob.html#property_id"
+                          >id</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJob.html#property_name"
+                          >name</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJob.html#property_schedule"
+                          >schedule</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_cronjobconfig" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html"
+                        title="CronJobConfig"
+                      >CronJobConfig</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Configuration for creating a new cron job.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html#property_body"
+                          >body</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html#property_contenttype"
+                          >contentType</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html#property_method"
+                          >method</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html#property_name"
+                          >name</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html#property_schedule"
+                          >schedule</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html#property_sql"
+                          >sql</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html#property_type"
+                          >type</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;CronJobConfig.html#property_url"
+                          >url</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_databaseconfig" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;DatabaseConfig.html"
+                        title="DatabaseConfig"
+                      >DatabaseConfig</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Configuration for creating or connecting to a
+                            database.
+                          </p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;DatabaseConfig.html#property_extensions"
+                          >extensions</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;DatabaseConfig.html#property_initscript"
+                          >initScript</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;DatabaseConfig.html#property_name"
+                          >name</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_fieldconfig" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html"
+                        title="FieldConfig"
+                      >FieldConfig</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Configuration for a single field in a collection.
+                          </p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_default"
+                          >default</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_hidden"
+                          >hidden</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_id"
+                          >id</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_maxselect"
+                          >maxSelect</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_name"
+                          >name</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_options"
+                          >options</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_required"
+                          >required</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_system"
+                          >system</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_tocollection"
+                          >toCollection</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_type"
+                          >type</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FieldConfig.html#property_unique"
+                          >unique</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_ftsindexconfig" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FtsIndexConfig.html"
+                        title="FtsIndexConfig"
+                      >FtsIndexConfig</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Configuration for a full-text search index.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FtsIndexConfig.html#property_fields"
+                          >fields</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;FtsIndexConfig.html#property_id"
+                          >id</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_migration" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;Migration.html"
+                        title="Migration"
+                      >Migration</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Represents a database migration record.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;Migration.html#property_appliedat"
+                          >appliedAt</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;Migration.html#property_batch"
+                          >batch</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;Migration.html#property_id"
+                          >id</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;Migration.html#property_name"
+                          >name</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_paginatedlist" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;PaginatedList.html"
+                        title="PaginatedList"
+                      >PaginatedList</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Represents a paginated list of items.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;PaginatedList.html#property_items"
+                          >items</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;PaginatedList.html#property_page"
+                          >page</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;PaginatedList.html#property_perpage"
+                          >perPage</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;PaginatedList.html#property_totalitems"
+                          >totalItems</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;PaginatedList.html#property_totalpages"
+                          >totalPages</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_realtimeevent" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RealtimeEvent.html"
+                        title="RealtimeEvent"
+                      >RealtimeEvent</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Represents a realtime event from the database.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RealtimeEvent.html#property_action"
+                          >action</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RealtimeEvent.html#property_record"
+                          >record</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_recorddata" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-TypeAlias bg-TypeAlias/15 dark:text-TypeAliasDark dark:bg-TypeAliasDark/15"
+                        title="Type Alias"
+                      >
+                        T
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RecordData.html"
+                        title="RecordData"
+                      >RecordData</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Generic type for record data.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="namespace_rocketbaseclient" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Class bg-Class/15 dark:text-ClassDark dark:bg-ClassDark/15"
+                        title="Class"
+                      >
+                        c
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html"
+                        title="RocketBaseClient"
+                      >RocketBaseClient</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Main client for interacting with the RocketBase
+                            backend. Provides access to databases, collections,
+                            authentication, workflows, and realtime features.
+                          </p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#property_admindbname"
+                          >adminDbName</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_adminheaders"
+                          >adminHeaders</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_admins"
+                          >admins</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#property_apikey"
+                          >apiKey</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_auth"
+                          >auth</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#property_baseurl"
+                          >baseUrl</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_close_0"
+                          >close</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_collection_0"
+                          >collection</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_connectrealtime_0"
+                          >connectRealtime</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_cron"
+                          >cron</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#property_dbname"
+                          >dbName</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_gate_0"
+                          >gate</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_gettoken_0"
+                          >getToken</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_headers"
+                          >headers</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_keys"
+                          >keys</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_migrations"
+                          >migrations</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#property_realtimesocket"
+                          >realtimeSocket</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_setadmindb_0"
+                          >setAdminDb</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_setapikey_0"
+                          >setApiKey</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_setdb_0"
+                          >setDb</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#method_settoken_0"
+                          >setToken</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_settings"
+                          >settings</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#property_subscriptions"
+                          >subscriptions</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#property_token"
+                          >token</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_webhooklogs"
+                          >webhookLogs</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_workflow"
+                          >workflow</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;RocketBaseClient.html#accessor_workflowstats"
+                          >workflowStats</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_step" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Function bg-Function/15 dark:text-FunctionDark dark:bg-FunctionDark/15"
+                        title="Function"
+                      >
+                        f
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;Step.html"
+                        title="Step"
+                      >Step</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Decorator to define a method as a Step within a
+                            Workflow. Wraps the method to provide idempotency,
+                            retries, and rollback capabilities.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="namespace_step-1" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Function bg-Function/15 dark:text-FunctionDark dark:bg-FunctionDark/15"
+                        title="Function"
+                      >
+                        f
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;step.html"
+                        title="step"
+                      >step</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Defines a step within a functional workflow. Can be
+                            used to wrap a function or define a block of code as
+                            a step.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="namespace_stepoptions" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;StepOptions.html"
+                        title="StepOptions"
+                      >StepOptions</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Options for a single workflow step.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;StepOptions.html#property_retries"
+                          >retries</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;StepOptions.html#property_rollback"
+                          >rollback</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;StepOptions.html#property_timeout"
+                          >timeout</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_stoprollback" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Class bg-Class/15 dark:text-ClassDark dark:bg-ClassDark/15"
+                        title="Class"
+                      >
+                        c
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;StopRollback.html"
+                        title="StopRollback"
+                      >StopRollback</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Error thrown to stop the rollback process in a
+                            workflow. When thrown inside a rollback handler, it
+                            prevents further rollback steps from executing.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="namespace_subscriptionoptions" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;SubscriptionOptions.html"
+                        title="SubscriptionOptions"
+                      >SubscriptionOptions</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Options for realtime subscriptions.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;SubscriptionOptions.html#property_group"
+                          >group</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;SubscriptionOptions.html#property_lastid"
+                          >lastId</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_triggerconfig" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;TriggerConfig.html"
+                        title="TriggerConfig"
+                      >TriggerConfig</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Configuration for a database trigger (webhook).</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;TriggerConfig.html#property_action"
+                          >action</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;TriggerConfig.html#property_enabled"
+                          >enabled</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;TriggerConfig.html#property_id"
+                          >id</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;TriggerConfig.html#property_url"
+                          >url</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_viewconfig" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;ViewConfig.html"
+                        title="ViewConfig"
+                      >ViewConfig</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Configuration for a database view.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;ViewConfig.html#property_slug"
+                          >slug</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;ViewConfig.html#property_sql"
+                          >sql</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_webhooklog" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html"
+                        title="WebhookLog"
+                      >WebhookLog</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Represents a log entry for a webhook execution.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_created_at"
+                          >created_at</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_error_msg"
+                          >error_msg</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_http_status"
+                          >http_status</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_id"
+                          >id</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_payload"
+                          >payload</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_response_body"
+                          >response_body</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_status"
+                          >status</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_tries"
+                          >tries</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_updated_at"
+                          >updated_at</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WebhookLog.html#property_url"
+                          >url</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_workflow" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Function bg-Function/15 dark:text-FunctionDark dark:bg-FunctionDark/15"
+                        title="Function"
+                      >
+                        f
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;Workflow.html"
+                        title="Workflow"
+                      >Workflow</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Decorator to define a class as a Workflow. Wraps the
+                            class to handle initialization, execution, and state
+                            management via RocketBase.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="namespace_workflow-1" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Function bg-Function/15 dark:text-FunctionDark dark:bg-FunctionDark/15"
+                        title="Function"
+                      >
+                        f
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;workflow.html"
+                        title="workflow"
+                      >workflow</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Defines a functional workflow.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowbase" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Class bg-Class/15 dark:text-ClassDark dark:bg-ClassDark/15"
+                        title="Class"
+                      >
+                        c
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html"
+                        title="WorkflowBase"
+                      >WorkflowBase</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Base class for all workflow implementations.
+                            Provides the core logic for step execution, state
+                            management, idempotency, and signal handling.
+                            Workflows extending this class (or using the
+                            functional wrapper) inherit these capabilities.
+                          </p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_callcounter"
+                          >callCounter</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_client"
+                          >client</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_completedsteps"
+                          >completedSteps</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_emittedevents"
+                          >emittedEvents</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#method_executestep_0"
+                          >executeStep</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#method_getsequentialid_0"
+                          >getSequentialId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_history"
+                          >history</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_invokedsteps"
+                          >invokedSteps</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_issuspended"
+                          >isSuspended</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#method_parallel_0"
+                          >parallel</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#method_rebuildstate_0"
+                          >rebuildState</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_rollbackstack"
+                          >rollbackStack</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_runid"
+                          >runId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#method_runrollback_0"
+                          >runRollback</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_signalcursors"
+                          >signalCursors</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_signalqueues"
+                          >signalQueues</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#method_sleep_0"
+                          >sleep</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_stepattempts"
+                          >stepAttempts</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#method_waitforsignal_0"
+                          >waitForSignal</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_workflowname"
+                          >workflowName</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowBase.html#property_workflowoptions"
+                          >workflowOptions</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowcontext" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowContext.html"
+                        title="WorkflowContext"
+                      >WorkflowContext</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Interface representing the context available within
+                            a workflow execution.
+                          </p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowContext.html#property_history"
+                          >history</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowContext.html#method_parallel_0"
+                          >parallel</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowContext.html#property_runid"
+                          >runId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowContext.html#method_sleep_0"
+                          >sleep</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowContext.html#property_stepattempts"
+                          >stepAttempts</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowContext.html#method_waitforsignal_0"
+                          >waitForSignal</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowContext.html#property_workflowname"
+                          >workflowName</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowevent" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowEvent.html"
+                        title="WorkflowEvent"
+                      >WorkflowEvent</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Represents an event within a workflow run.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowEvent.html#property_correlationid"
+                          >correlationId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowEvent.html#property_createdat"
+                          >createdAt</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowEvent.html#property_eventid"
+                          >eventId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowEvent.html#property_eventtype"
+                          >eventType</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowEvent.html#property_payload"
+                          >payload</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowEvent.html#property_runid"
+                          >runId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowEvent.html#property_stepid"
+                          >stepId</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowjob" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowJob.html"
+                        title="WorkflowJob"
+                      >WorkflowJob</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Represents a job assignment for a workflow worker.
+                          </p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowJob.html#property_data"
+                          >data</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowJob.html#property_id"
+                          >id</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowoptions" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowOptions.html"
+                        title="WorkflowOptions"
+                      >WorkflowOptions</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Options for starting a workflow.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowOptions.html#property_deploymentid"
+                          >deploymentId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowOptions.html#property_executiontimeout"
+                          >executionTimeout</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowOptions.html#property_maxevents"
+                          >maxEvents</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowregistry" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Variable bg-Variable/15 dark:text-VariableDark dark:bg-VariableDark/15"
+                        title="Variable"
+                      >
+                        v
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRegistry.html"
+                        title="WorkflowRegistry"
+                      >WorkflowRegistry</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Global registry for workflow classes and
+                            definitions. Maps workflow names to their
+                            corresponding class constructors or implementations.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowrun" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html"
+                        title="WorkflowRun"
+                      >WorkflowRun</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Represents a workflow run.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_completedat"
+                          >completedAt</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_createdat"
+                          >createdAt</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_deploymentid"
+                          >deploymentId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_error"
+                          >error</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_eventcount"
+                          >eventCount</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_executioncontext"
+                          >executionContext</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_executiontimeout"
+                          >executionTimeout</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_input"
+                          >input</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_maxevents"
+                          >maxEvents</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_output"
+                          >output</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_runid"
+                          >runId</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_startedat"
+                          >startedAt</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_status"
+                          >status</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_updatedat"
+                          >updatedAt</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowRun.html#property_workflowname"
+                          >workflowName</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowstats" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Interface bg-Interface/15 dark:text-InterfaceDark dark:bg-InterfaceDark/15"
+                        title="Interface"
+                      >
+                        I
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowStats.html"
+                        title="WorkflowStats"
+                      >WorkflowStats</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>Aggregated statistics for workflows.</p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowStats.html#property_active"
+                          >active</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowStats.html#property_completed"
+                          >completed</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowStats.html#property_failed"
+                          >failed</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowStats.html#property_total"
+                          >total</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div id="namespace_workflowworker" class="namespaceItem">
+                    <div class="docNodeKindIcon">
+                      <div
+                        class="text-Class bg-Class/15 dark:text-ClassDark dark:bg-ClassDark/15"
+                        title="Class"
+                      >
+                        c
+                      </div>
+                    </div>
+                    <div class="namespaceItemContent">
+                      <a
+                        href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html"
+                        title="WorkflowWorker"
+                      >WorkflowWorker</a>
+
+                      <div class="namespaceItemContentDoc">
+                        <div class="markdown_summary">
+                          <p>
+                            Worker class responsible for polling and executing
+                            workflow jobs. Connects to the RocketBase backend
+                            via WebSocket to receive job assignments.
+                          </p>
+                        </div>
+                      </div>
+                      <ul class="namespaceItemContentSubItems">
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#property_active"
+                          >active</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#property_activejobs"
+                          >activeJobs</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#method_connect_0"
+                          >connect</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#method_processjob_0"
+                          >processJob</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#method_resumepending_0"
+                          >resumePending</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#property_socket"
+                          >socket</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#method_start_0"
+                          >start</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#method_stop_0"
+                          >stop</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#property_stopcallback"
+                          >stopCallback</a>
+                        </li>
+                        <li>
+                          <a
+                            href=".&#x2F;.&#x2F;.&#x2F;~&#x2F;WorkflowWorker.html#property_workflowname"
+                          >workflowName</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

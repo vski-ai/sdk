@@ -9,7 +9,17 @@
 
 let currentContext: any = null;
 
+/**
+ * Manages the execution context for functional workflows.
+ * Used to store and retrieve the current workflow instance across async calls.
+ */
 export const WorkflowContext = {
+  /**
+   * Runs a function within a specific context.
+   * @param ctx - The context object to store.
+   * @param fn - The function to execute.
+   * @returns The result of the function execution.
+   */
   run: <T>(ctx: any, fn: () => T): T => {
     const prev = currentContext;
     currentContext = ctx;
@@ -27,5 +37,9 @@ export const WorkflowContext = {
       throw e;
     }
   },
+  /**
+   * Retrieves the current execution context.
+   * @returns The current context object.
+   */
   getStore: () => currentContext,
 };

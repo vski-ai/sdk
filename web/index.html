@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VSKI/SDK</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-color: #0a0a0a;
+        --text-color: #00ff41;
+        --accent-color: #008f11;
+        --link-color: #ffffff;
+        --card-bg: #111111;
+        --border-color: #333;
+        --font-mono:
+          "Fira Code", "Consolas", "Monaco", "Courier New", monospace;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-family: var(--font-mono);
+        margin: 0;
+        padding: 0;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 4rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 2rem;
+      }
+
+      h1 {
+        font-size: 3rem;
+        margin: 0;
+        text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        position: relative;
+      }
+
+      .subtitle {
+        font-size: 1.2rem;
+        opacity: 0.8;
+        margin-top: 0.5rem;
+      }
+
+      .links {
+        margin-top: 2rem;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 0.6rem 1.2rem;
+        border: 0px solid var(--text-color);
+        color: var(--text-color);
+        text-decoration: none;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+      }
+
+      .btn:hover, .btn:focus {
+        background-color: var(--text-color);
+        color: var(--bg-color);
+        box-shadow: 0 0 15px var(--text-color);
+      }
+
+      section {
+        margin-bottom: 4rem;
+      }
+
+      h2 {
+        border-left: 4px solid var(--text-color);
+        padding-left: 1rem;
+        margin-bottom: 1.5rem;
+        color: var(--link-color);
+      }
+
+      .code-block {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 1rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .code-block::before {
+        content: "typescript";
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: var(--border-color);
+        color: #888;
+        padding: 2px 8px;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+      }
+
+      /* Scanline effect */
+      body::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(
+          to bottom,
+          rgba(255, 255, 255, 0),
+          rgba(255, 255, 255, 0) 50%,
+          rgba(0, 0, 0, 0.1) 50%,
+          rgba(0, 0, 0, 0.1)
+        );
+        background-size: 100% 4px;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.3;
+      }
+
+      /* Blinking cursor for title */
+      .cursor {
+        display: inline-block;
+        width: 15px;
+        height: 3rem;
+        background-color: var(--text-color);
+        animation: blink 1s step-end infinite;
+        vertical-align: bottom;
+        margin-left: 5px;
+        position: absolute;
+        top: 11px;
+      }
+
+      @keyframes blink {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+
+      footer {
+        text-align: center;
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 4rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border-color);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>VSKI/SDK<span class="cursor"></span></h1>
+        <div class="subtitle">VSKI RocketBase BaaS Platform Client</div>
+
+        <div class="links">
+          <a href="/doc/" class="btn">Documentation</a>
+          <a href="/coverage/" class="btn">Test Coverage</a>
+          <a href="https://emulator.vski.ai" class="btn" target="_blank"
+          >Emulator</a>
+          <a href="https://github.com/vski-ai/sdk" class="btn" target="_blank"
+          >Github</a>
+        </div>
+      </header>
+
+      <main>
+        <section>
+          <h2>01. Collections & Data</h2>
+          <p>
+            Type-safe database operations with a fluent API. Works in Node,
+            Deno, and the Browser.
+          </p>
+          <div class="code-block">
+            <pre>
+<code class="language-typescript">import { RocketBaseClient } from "@vski/sdk";
+
+// Initialize client
+const client = new RocketBaseClient("https://api.vski.ai");
+
+// Access typed collection
+const users = client.collection("users");
+
+// Create a new record
+const newUser = await users.create({
+    username: "neo",
+    role: "hacker",
+    active: true
+});
+
+// Query with advanced filtering
+const activeHackers = await users.getList(1, 20, {
+    filter: "role = 'hacker' && active = true",
+    sort: "-created"
+});
+
+console.log(`Found ${activeHackers.totalItems} active hackers.`);</code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h2>02. Realtime Streams</h2>
+          <p>Subscribe to database changes instantly via WebSockets.</p>
+          <div class="code-block">
+            <pre>
+<code class="language-typescript">// Subscribe to all events in the 'messages' collection
+const unsubscribe = client.collection("messages").subscribe((event) => {
+    switch (event.action) {
+        case "create":
+            console.log("Incoming transmission:", event.record);
+            break;
+        case "delete":
+            console.log("Transmission purged:", event.record.id);
+            break;
+    }
+});
+
+// Clean up when done
+// unsubscribe();</code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h2>03. Durable Workflows</h2>
+          <p>
+            Write reliable, long-running workflows as code using the functional
+            API. Automatic retries, durable sleep, and state recovery.
+          </p>
+          <div class="code-block">
+            <pre>
+<code class="language-typescript">import { workflow, step } from "@vski/sdk";
+
+// Define individual steps
+const lockSystem = step("initiate-lockdown", async (ctx) => {
+    console.log("System locked.");
+    return { lockedAt: new Date() };
+});
+
+const checkOverride = step("wait-for-auth", async (ctx) => {
+    // Pauses execution until signal received
+    const signal = await ctx.waitForSignal("admin-override");
+    return signal.authorized;
+});
+
+// Compose the workflow
+export const SystemPurge = workflow("system-purge")
+
+SystemPurge.run(async (ctx) => {
+    await lockSystem();
+
+    // Durable sleep (survives worker restarts)
+    await ctx.sleep("10s");
+
+    const authorized = await checkOverride();
+    if (!authorized) {
+        return "Purge aborted.";
+    }
+
+    return "System purged.";
+});</code></pre>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        Anton A Nesterov &copy; 2026 —
+        <a
+          href="https://github.com/nesterow"
+          target="_blank"
+          className="ml-1 text-primary hover:underline"
+        >
+          github.com/nesterow
+        </a>
+      </footer>
+    </div>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"
+    ></script>
+
+    <script>
+      // Generate Favicon
+      (function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext("2d");
+
+        // Background
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillRect(0, 0, 64, 64);
+
+        // Text
+        ctx.fillStyle = "#00ff41";
+        ctx.font = "bold 40px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(">_", 32, 34);
+
+        // Border
+        ctx.strokeStyle = "#00ff41";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, 64, 64);
+
+        const link = document.createElement("link");
+        link.type = "image/x-icon";
+        link.rel = "shortcut icon";
+        link.href = canvas.toDataURL();
+        document.getElementsByTagName("head")[0].appendChild(link);
+      })();
+    </script>
+  </body>
+</html>

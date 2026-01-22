@@ -137,8 +137,8 @@ var k = class {
           body: JSON.stringify({ identity: s, password: r }),
         });
         if (!t.ok) throw new Error(await t.text());
-        let a = await t.json();
-        return e.setToken(a.token), a;
+        let o = await t.json();
+        return e.setToken(o.token), o;
       },
       register: async (s) => {
         let r = await fetch(`${e.baseUrl}/api/auth/register`, {
@@ -162,14 +162,14 @@ var k = class {
         return s.json();
       },
       authViaOAuth2: async (s, r, t) => {
-        let a = await fetch(`${e.baseUrl}/api/auth/oauth2-login`, {
+        let o = await fetch(`${e.baseUrl}/api/auth/oauth2-login`, {
           method: "POST",
           headers: e.headers,
           body: JSON.stringify({ provider: s, code: r, redirectUrl: t }),
         });
-        if (!a.ok) throw new Error(await a.text());
-        let o = await a.json();
-        return e.setToken(o.token), o;
+        if (!o.ok) throw new Error(await o.text());
+        let a = await o.json();
+        return e.setToken(a.token), a;
       },
     };
   }
@@ -197,8 +197,8 @@ var k = class {
           body: JSON.stringify({ identity: s, password: r }),
         });
         if (!t.ok) throw new Error(await t.text());
-        let a = await t.json();
-        return e.setToken(a.token), a;
+        let o = await t.json();
+        return e.setToken(o.token), o;
       },
       init: async (s) => {
         let r = await fetch(`${e.baseUrl}/api/admins/init`, {
@@ -257,8 +257,8 @@ var k = class {
     return {
       list: async (s = {}) => {
         let r = new URLSearchParams();
-        Object.entries(s).forEach(([a, o]) => {
-          o !== void 0 && o !== "" && r.append(a, o.toString());
+        Object.entries(s).forEach(([o, a]) => {
+          a !== void 0 && a !== "" && r.append(o, a.toString());
         });
         let t = await fetch(`${e.baseUrl}/api/webhooks/logs?${r.toString()}`, {
           headers: e.headers,
@@ -283,84 +283,85 @@ var k = class {
   collection(e) {
     let s = this;
     return {
-      getList: async (r = 1, t = 30, a = {}) => {
-        let o = new URLSearchParams({ page: String(r), perPage: String(t) });
-        a.filter && o.append("filter", a.filter),
-          a.expand && o.append("expand", a.expand);
+      getList: async (r = 1, t = 30, o = {}) => {
+        let a = new URLSearchParams({ page: String(r), perPage: String(t) });
+        o.filter && a.append("filter", o.filter),
+          o.expand && a.append("expand", o.expand),
+          o.sort && a.append("sort", o.sort);
         let i = await fetch(
-          `${s.baseUrl}/api/collections/${e}/records?${o.toString()}`,
+          `${s.baseUrl}/api/collections/${e}/records?${a.toString()}`,
           { headers: s.headers },
         );
         if (!i.ok) throw new Error(await i.text());
         return i.json();
       },
       getOne: async (r, t = {}) => {
-        let a = new URLSearchParams();
-        t.expand && a.append("expand", t.expand);
-        let o = await fetch(
-          `${s.baseUrl}/api/collections/${e}/records/${r}?${a.toString()}`,
+        let o = new URLSearchParams();
+        t.expand && o.append("expand", t.expand);
+        let a = await fetch(
+          `${s.baseUrl}/api/collections/${e}/records/${r}?${o.toString()}`,
           { headers: s.headers },
         );
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!a.ok) throw new Error(await a.text());
+        return a.json();
       },
       search: async (r, t = {}) => {
-        let a = new URLSearchParams({ q: r });
-        t.page && a.append("page", String(t.page)),
-          t.perPage && a.append("perPage", String(t.perPage)),
-          t.expand && a.append("expand", t.expand),
-          t.snippet && a.append("snippet", "true");
-        let o = await fetch(
-          `${s.baseUrl}/api/collections/${e}/records/search?${a.toString()}`,
+        let o = new URLSearchParams({ q: r });
+        t.page && o.append("page", String(t.page)),
+          t.perPage && o.append("perPage", String(t.perPage)),
+          t.expand && o.append("expand", t.expand),
+          t.snippet && o.append("snippet", "true");
+        let a = await fetch(
+          `${s.baseUrl}/api/collections/${e}/records/search?${o.toString()}`,
           { headers: s.headers },
         );
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!a.ok) throw new Error(await a.text());
+        return a.json();
       },
       getView: async (r, t = {}) => {
-        let a = new URLSearchParams();
-        t.page && a.append("page", String(t.page)),
-          t.perPage && a.append("perPage", String(t.perPage)),
-          t.expand && a.append("expand", t.expand),
-          t.filter && a.append("filter", t.filter),
-          t.sort && a.append("sort", t.sort);
-        let o = await fetch(
-          `${s.baseUrl}/api/collections/${e}/records/views/${r}?${a.toString()}`,
+        let o = new URLSearchParams();
+        t.page && o.append("page", String(t.page)),
+          t.perPage && o.append("perPage", String(t.perPage)),
+          t.expand && o.append("expand", t.expand),
+          t.filter && o.append("filter", t.filter),
+          t.sort && o.append("sort", t.sort);
+        let a = await fetch(
+          `${s.baseUrl}/api/collections/${e}/records/views/${r}?${o.toString()}`,
           { headers: s.headers },
         );
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!a.ok) throw new Error(await a.text());
+        return a.json();
       },
       create: async (r) => {
-        let t = r instanceof FormData, a = { ...s.headers };
-        t && delete a["Content-Type"];
-        let o = await fetch(`${s.baseUrl}/api/collections/${e}/records`, {
+        let t = r instanceof FormData, o = { ...s.headers };
+        t && delete o["Content-Type"];
+        let a = await fetch(`${s.baseUrl}/api/collections/${e}/records`, {
           method: "POST",
-          headers: a,
+          headers: o,
           body: t ? r : JSON.stringify(r),
         });
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!a.ok) throw new Error(await a.text());
+        return a.json();
       },
       update: async (r, t) => {
-        let a = t instanceof FormData, o = { ...s.headers };
-        a && delete o["Content-Type"];
+        let o = t instanceof FormData, a = { ...s.headers };
+        o && delete a["Content-Type"];
         let i = await fetch(`${s.baseUrl}/api/collections/${e}/records/${r}`, {
           method: "PATCH",
-          headers: o,
-          body: a ? t : JSON.stringify(t),
+          headers: a,
+          body: o ? t : JSON.stringify(t),
         });
         if (!i.ok) throw new Error(await i.text());
         return i.json();
       },
       bulkUpdate: async (r, t) => {
-        let a = await fetch(`${s.baseUrl}/api/collections/${e}/records/bulk`, {
+        let o = await fetch(`${s.baseUrl}/api/collections/${e}/records/bulk`, {
           method: "PATCH",
           headers: s.headers,
           body: JSON.stringify({ ids: r, data: t }),
         });
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
+        if (!o.ok) throw new Error(await o.text());
+        return o.json();
       },
       delete: async (r) => {
         let t = await fetch(`${s.baseUrl}/api/collections/${e}/records/${r}`, {
@@ -381,7 +382,7 @@ var k = class {
       },
       authWithPassword: async (r, t) => {
         if (e === "_superusers") return s.admins.authWithPassword(r, t);
-        let a = await fetch(
+        let o = await fetch(
           `${s.baseUrl}/api/collections/${e}/auth-with-password`,
           {
             method: "POST",
@@ -389,9 +390,9 @@ var k = class {
             body: JSON.stringify({ identity: r, password: t }),
           },
         );
-        if (!a.ok) throw new Error(await a.text());
-        let o = await a.json();
-        return s.setToken(o.token), o;
+        if (!o.ok) throw new Error(await o.text());
+        let a = await o.json();
+        return s.setToken(a.token), a;
       },
       subscribe: (
         r,
@@ -427,21 +428,21 @@ var k = class {
       },
       this.realtimeSocket.onmessage = (s) => {
         let r = JSON.parse(s.data), t = this.subscriptions.get(r.collection);
-        !t || !r.events || r.events.forEach((a) => {
+        !t || !r.events || r.events.forEach((o) => {
           try {
-            t.callback(a.data),
-              t.options?.group || (t.options = { ...t.options, lastId: a.id }),
-              a.ackId && t.options?.group &&
+            t.callback(o.data),
+              t.options?.group || (t.options = { ...t.options, lastId: o.id }),
+              o.ackId && t.options?.group &&
               this.realtimeSocket?.send(
                 JSON.stringify({
                   type: "ACK",
                   collection: r.collection,
-                  id: a.ackId,
+                  id: o.ackId,
                   group: t.options.group,
                 }),
               );
-          } catch (o) {
-            console.error("Error handling realtime event:", o);
+          } catch (a) {
+            console.error("Error handling realtime event:", a);
           }
         });
       },
@@ -453,12 +454,12 @@ var k = class {
   get migrations() {
     let e = this, s = "_migrations";
     return {
-      getList: async (r = 1, t = 500, a = {}) => {
-        let o = new URLSearchParams({ page: String(r), perPage: String(t) });
-        a.filter && o.append("filter", a.filter),
-          a.sort && o.append("sort", a.sort);
+      getList: async (r = 1, t = 500, o = {}) => {
+        let a = new URLSearchParams({ page: String(r), perPage: String(t) });
+        o.filter && a.append("filter", o.filter),
+          o.sort && a.append("sort", o.sort);
         let i = await fetch(
-          `${e.baseUrl}/api/collections/${s}/records?${o.toString()}`,
+          `${e.baseUrl}/api/collections/${s}/records?${a.toString()}`,
           { headers: e.adminHeaders },
         );
         if (!i.ok) throw new Error(await i.text());
@@ -483,13 +484,13 @@ var k = class {
       },
       run: async (r) => {
         let t = await e.migrations.getList(1, 500),
-          a = new Set(t.items.map((o) => o.name));
-        for (let o of r) {
-          a.has(o.name) ||
-            (console.log(`[Migrations] Applying: ${o.name}`),
-              await o.up(e),
+          o = new Set(t.items.map((a) => a.name));
+        for (let a of r) {
+          o.has(a.name) ||
+            (console.log(`[Migrations] Applying: ${a.name}`),
+              await a.up(e),
               await e.migrations.create({
-                name: o.name,
+                name: a.name,
                 appliedAt: new Date().toISOString(),
                 batch: 1,
               }));
@@ -509,8 +510,8 @@ var k = class {
         if (!t.ok) throw new Error(await t.text());
         return t.json();
       },
-      trigger: async (r, t, a = {}) => {
-        let c = { ...h.get(r)?.prototype?.workflowOptions || {}, ...a },
+      trigger: async (r, t, o = {}) => {
+        let c = { ...h.get(r)?.prototype?.workflowOptions || {}, ...o },
           w = await e.workflow.createRun({
             deploymentId: c.deploymentId || "sdk",
             workflowName: r,
@@ -544,13 +545,13 @@ var k = class {
         return t.json();
       },
       updateRun: async (r, t) => {
-        let a = await fetch(`${s}/runs/${r}`, {
+        let o = await fetch(`${s}/runs/${r}`, {
           method: "PATCH",
           headers: e.headers,
           body: JSON.stringify(t),
         });
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
+        if (!o.ok) throw new Error(await o.text());
+        return o.json();
       },
       listRuns: async (r = {}) => {
         let t = new URLSearchParams();
@@ -558,38 +559,38 @@ var k = class {
           r.status && t.append("status", r.status),
           r.limit && t.append("limit", String(r.limit)),
           r.cursor && t.append("cursor", r.cursor);
-        let a = await fetch(`${s}/runs?${t.toString()}`, {
+        let o = await fetch(`${s}/runs?${t.toString()}`, {
           headers: e.headers,
-        });
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
-      },
-      createStep: async (r, t) => {
-        let a = await fetch(`${s}/steps`, {
-          method: "POST",
-          headers: e.headers,
-          body: JSON.stringify({ runId: r, ...t }),
-        });
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
-      },
-      updateStep: async (r, t, a) => {
-        let o = await fetch(`${s}/steps/${r}/${t}`, {
-          method: "PATCH",
-          headers: e.headers,
-          body: JSON.stringify(a),
         });
         if (!o.ok) throw new Error(await o.text());
         return o.json();
       },
-      createEvent: async (r, t) => {
-        let a = await fetch(`${s}/events`, {
+      createStep: async (r, t) => {
+        let o = await fetch(`${s}/steps`, {
           method: "POST",
           headers: e.headers,
           body: JSON.stringify({ runId: r, ...t }),
         });
+        if (!o.ok) throw new Error(await o.text());
+        return o.json();
+      },
+      updateStep: async (r, t, o) => {
+        let a = await fetch(`${s}/steps/${r}/${t}`, {
+          method: "PATCH",
+          headers: e.headers,
+          body: JSON.stringify(o),
+        });
         if (!a.ok) throw new Error(await a.text());
         return a.json();
+      },
+      createEvent: async (r, t) => {
+        let o = await fetch(`${s}/events`, {
+          method: "POST",
+          headers: e.headers,
+          body: JSON.stringify({ runId: r, ...t }),
+        });
+        if (!o.ok) throw new Error(await o.text());
+        return o.json();
       },
       listEvents: async (r) => {
         let t = await fetch(`${s}/runs/${r}/events`, { headers: e.headers });
@@ -599,14 +600,14 @@ var k = class {
       pollQueue: async (r) => {
         let t = await fetch(`${s}/queue/${r}`, { headers: e.headers });
         if (!t.ok) throw new Error(await t.text());
-        let a = await t.text();
-        return a ? JSON.parse(a) : null;
+        let o = await t.text();
+        return o ? JSON.parse(o) : null;
       },
-      sendSignal: async (r, t, a, o) => {
+      sendSignal: async (r, t, o, a) => {
         await e.workflow.createEvent(r, {
           eventType: "signal_received",
-          correlationId: o || `signal-${t}-${crypto.randomUUID()}`,
-          payload: { name: t, data: a },
+          correlationId: a || `signal-${t}-${crypto.randomUUID()}`,
+          payload: { name: t, data: o },
         });
         let i = await e.workflow.getRun(r);
         return await e.workflow.queueMessage(
@@ -620,14 +621,14 @@ var k = class {
         ),
           !0;
       },
-      queueMessage: async (r, t, a) => {
-        let o = await fetch(`${s}/queue`, {
+      queueMessage: async (r, t, o) => {
+        let a = await fetch(`${s}/queue`, {
           method: "POST",
           headers: e.headers,
-          body: JSON.stringify({ queueName: r, message: t, opts: a }),
+          body: JSON.stringify({ queueName: r, message: t, opts: o }),
         });
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!a.ok) throw new Error(await a.text());
+        return a.json();
       },
       ack: async (r) => {
         let t = await fetch(`${s}/queue/ack`, {
@@ -658,13 +659,13 @@ var k = class {
       },
       hooks: {
         create: async (r, t) => {
-          let a = await fetch(`${s}/hooks`, {
+          let o = await fetch(`${s}/hooks`, {
             method: "POST",
             headers: e.headers,
             body: JSON.stringify({ runId: r, ...t }),
           });
-          if (!a.ok) throw new Error(await a.text());
-          return a.json();
+          if (!o.ok) throw new Error(await o.text());
+          return o.json();
         },
         get: async (r) => {
           let t = await fetch(`${s}/hooks/${r}`, { headers: e.headers });
@@ -711,6 +712,7 @@ var f = class {
   client;
   runId = "";
   workflowName = "unknown";
+  workflowOptions = {};
   history = new Map();
   completedSteps = new Set();
   rollbackStack = [];
@@ -761,10 +763,10 @@ var f = class {
   async waitForSignal(e) {
     let s = this.getSequentialId(`signal-${e}`);
     if (this.history.has(s)) {
-      let t = this.history.get(s), a = this.signalQueues.get(e);
-      if (a) {
-        let o = this.signalCursors.get(e) || 0;
-        o < a.length && a[o] === t && this.signalCursors.set(e, o + 1);
+      let t = this.history.get(s), o = this.signalQueues.get(e);
+      if (o) {
+        let a = this.signalCursors.get(e) || 0;
+        a < o.length && o[a] === t && this.signalCursors.set(e, a + 1);
       }
       return t;
     }
@@ -772,8 +774,8 @@ var f = class {
     if (r) {
       let t = this.signalCursors.get(e) || 0;
       if (t < r.length) {
-        let a = r[t];
-        return this.signalCursors.set(e, t + 1), a;
+        let o = r[t];
+        return this.signalCursors.set(e, t + 1), o;
       }
     }
     throw this.runId
@@ -795,11 +797,11 @@ var f = class {
       let t = r.pop();
       if (typeof this[t] == "function") {
         try {
-          let a = await this[t](e, s);
-          s[t] = a;
-        } catch (a) {
-          if (a.name === "StopRollback") break;
-          console.error(`Rollback method ${t} failed:`, a.message);
+          let o = await this[t](e, s);
+          s[t] = o;
+        } catch (o) {
+          if (o.name === "StopRollback") break;
+          console.error(`Rollback method ${t} failed:`, o.message);
         }
       }
     }
@@ -827,10 +829,11 @@ var f = class {
           this.completedSteps.add(s.correlationId);
           break;
         case "signal_received":
-          this.history.set(s.correlationId, r.data),
-            r.name &&
-            (this.signalQueues.has(r.name) || this.signalQueues.set(r.name, []),
-              this.signalQueues.get(r.name).push(r.data));
+          if (this.history.set(s.correlationId, r.data), r.name) {
+            let t = r.name;
+            this.signalQueues.has(t) || this.signalQueues.set(t, []),
+              this.signalQueues.get(t).push(r.data);
+          }
           break;
         case "rollback_registered":
           this.rollbackStack.push(r.method);
@@ -863,17 +866,17 @@ var f = class {
             this.rollbackStack.push(i));
       }
     }
-    let a = t.retries || 0, o = 0;
+    let o = t.retries || 0, a = 0;
     for (
       this.stepAttempts.has(e) || this.stepAttempts.set(e, 0),
-        o = this.stepAttempts.get(e);;
+        a = this.stepAttempts.get(e);;
     ) {
       try {
         this.emittedEvents.has(e) ||
           (await this.client.workflow.createEvent(this.runId, {
             eventType: "step_started",
             correlationId: e,
-            payload: { attempt: o },
+            payload: { attempt: a },
           }),
             this.emittedEvents.add(e));
         let i = await s.apply(this, r);
@@ -886,21 +889,21 @@ var f = class {
           this.history.set(e, i),
           i;
       } catch (i) {
-        if (o < a) {
-          o++,
-            this.stepAttempts.set(e, o),
+        if (a < o) {
+          a++,
+            this.stepAttempts.set(e, a),
             await this.client.workflow.createEvent(this.runId, {
               eventType: "step_retrying",
               correlationId: e,
-              payload: { error: i.message, attempt: o },
+              payload: { error: i.message, attempt: a },
             }),
-            await new Promise((c) => setTimeout(c, 1e3 * o));
+            await new Promise((c) => setTimeout(c, 1e3 * a));
           continue;
         }
         throw await this.client.workflow.createEvent(this.runId, {
           eventType: "step_failed",
           correlationId: e,
-          payload: { error: i.message, attempt: o },
+          payload: { error: i.message, attempt: a },
         }),
           i;
       }
@@ -912,43 +915,43 @@ function P(n, e = {}) {
     h.set(n, s), s.prototype.workflowName = n, s.prototype.workflowOptions = e;
     let r = s.prototype.run;
     r && (s.prototype.run = async function (...t) {
-      let a = this;
-      if (!a.client) throw new Error("Workflow needs a RocketBaseClient.");
-      if (!a.runId) {
-        let o = await a.client.workflow.trigger(n, t, e);
-        a.runId = o.runId;
+      let o = this;
+      if (!o.client) throw new Error("Workflow needs a RocketBaseClient.");
+      if (!o.runId) {
+        let a = await o.client.workflow.trigger(n, t, e);
+        o.runId = a.runId;
       }
-      await a.client.workflow.updateRun(a.runId, { status: "running" });
+      await o.client.workflow.updateRun(o.runId, { status: "running" });
       try {
-        let o = await r.apply(a, t);
-        return a.isSuspended ||
-          await a.client.workflow.updateRun(a.runId, {
+        let a = await r.apply(o, t);
+        return o.isSuspended ||
+          await o.client.workflow.updateRun(o.runId, {
             status: "completed",
-            output: o,
+            output: a,
           }),
-          o;
-      } catch (o) {
-        if (o instanceof l) return;
-        console.error(`[Workflow ${n}] Failed:`, o.message);
+          a;
+      } catch (a) {
+        if (a instanceof l) return;
+        console.error(`[Workflow ${n}] Failed:`, a.message);
         try {
-          await a.runRollback(o);
+          await o.runRollback(a);
         } catch (i) {
           console.error(`[Workflow ${n}] Rollback failed:`, i.message);
         }
-        throw await a.client.workflow.updateRun(a.runId, {
+        throw await o.client.workflow.updateRun(o.runId, {
           status: "failed",
-          error: { message: o.message, stack: o.stack },
+          error: { message: a.message, stack: a.stack },
         }),
-          o;
+          a;
       }
     });
   };
 }
 function U(n, e = {}) {
   return function (s, r, t) {
-    let a = t.value;
-    t.value = async function (...o) {
-      return this.executeStep(n, a, o, e);
+    let o = t.value;
+    t.value = async function (...a) {
+      return this.executeStep(n, o, a, e);
     };
   };
 }
@@ -988,9 +991,9 @@ var m = class {
         workflowName: e,
         status: "running",
       }),
-      t = [...s.data, ...r.data];
+      t = [...s.items, ...r.items];
     console.log(`[Worker ${e}] Resuming ${t.length} runs`);
-    for (let a of t) await this.client.workflow.resume(a.runId);
+    for (let o of t) await this.client.workflow.resume(o.runId);
   }
   async stop() {
     this.active = !1,
@@ -1029,13 +1032,13 @@ var m = class {
       },
       this.socket.onmessage = (t) => {
         try {
-          let a = JSON.parse(t.data);
-          if (a.event === "JOB") {
-            let o = this.processJob(a.data);
-            this.activeJobs.add(o), o.finally(() => this.activeJobs.delete(o));
+          let o = JSON.parse(t.data);
+          if (o.event === "JOB") {
+            let a = this.processJob(o.data);
+            this.activeJobs.add(a), a.finally(() => this.activeJobs.delete(a));
           }
-        } catch (a) {
-          console.error(`[Worker ${e}] Error handling message:`, a);
+        } catch (o) {
+          console.error(`[Worker ${e}] Error handling message:`, o);
         }
       },
       this.socket.onclose = () => {
@@ -1068,7 +1071,7 @@ var m = class {
       return;
     }
     try {
-      let [a, o] = await Promise.all([
+      let [o, a] = await Promise.all([
           this.client.workflow.getRun(s),
           this.client.workflow.listEvents(s),
         ]),
@@ -1083,8 +1086,8 @@ var m = class {
         return;
       }
       let c = new i(this.client);
-      c.runId = s, c.rebuildState(o);
-      let w = a.executionTimeout || 3e4,
+      c.runId = s, c.rebuildState(a);
+      let w = o.executionTimeout || 3e4,
         p,
         y = new Promise((b, S) => {
           p = setTimeout(
@@ -1102,8 +1105,8 @@ var m = class {
         c.isSuspended
           ? console.log(`[Worker ${this.workflowName}] Job ${e.id} suspended`)
           : console.log(`[Worker ${this.workflowName}] Job ${e.id} completed`);
-    } catch (a) {
-      if (clearInterval(t), a instanceof l) {
+    } catch (o) {
+      if (clearInterval(t), o instanceof l) {
         await this.client.workflow.ack(e.id),
           console.log(`[Worker ${this.workflowName}] Job ${e.id} suspended`);
         return;
@@ -1111,18 +1114,18 @@ var m = class {
       if (
         console.error(
           `[Worker ${this.workflowName}] Job ${e.id} failed:`,
-          a.message,
-        ), a.message === "CircuitBreaker: Execution timeout"
+          o.message,
+        ), o.message === "CircuitBreaker: Execution timeout"
       ) {
         try {
           await this.client.workflow.updateRun(s, {
             status: "failed",
-            error: { message: a.message },
+            error: { message: o.message },
           });
-        } catch (o) {
+        } catch (a) {
           console.error(
             `[Worker ${this.workflowName}] Failed to update run status:`,
-            o,
+            a,
           );
         }
       }
@@ -1160,11 +1163,11 @@ function M(n, e = {}) {
         static workflowName = n;
         workflowName = n;
         workflowOptions = e;
-        async run(...a) {
-          let o = this;
+        async run(...o) {
+          let a = this;
           return await u.run(this, async () => {
             try {
-              return await s.call(o, o, ...a);
+              return await s.call(a, a, ...o);
             } catch (i) {
               throw i;
             }
@@ -1173,18 +1176,18 @@ function M(n, e = {}) {
       };
       h.set(n, r);
       let t = r.prototype.run;
-      return r.prototype.run = async function (...a) {
-        let o = this;
-        if (!o.client) throw new Error("Workflow needs a RocketBaseClient.");
-        if (!o.runId) {
-          let i = await o.client.workflow.trigger(n, a, e);
-          o.runId = i.runId;
+      return r.prototype.run = async function (...o) {
+        let a = this;
+        if (!a.client) throw new Error("Workflow needs a RocketBaseClient.");
+        if (!a.runId) {
+          let i = await a.client.workflow.trigger(n, o, e);
+          a.runId = i.runId;
         }
-        await o.client.workflow.updateRun(o.runId, { status: "running" });
+        await a.client.workflow.updateRun(a.runId, { status: "running" });
         try {
-          let i = await t.apply(o, a);
-          return o.isSuspended ||
-            await o.client.workflow.updateRun(o.runId, {
+          let i = await t.apply(a, o);
+          return a.isSuspended ||
+            await a.client.workflow.updateRun(a.runId, {
               status: "completed",
               output: i,
             }),
@@ -1193,11 +1196,11 @@ function M(n, e = {}) {
           if (i instanceof l) return;
           console.error(`[Workflow ${n}] Failed:`, i.message);
           try {
-            await o.runRollback(i);
+            await a.runRollback(i);
           } catch (c) {
             console.error(`[Workflow ${n}] Rollback failed:`, c.message);
           }
-          throw await o.client.workflow.updateRun(o.runId, {
+          throw await a.client.workflow.updateRun(a.runId, {
             status: "failed",
             error: { message: i.message, stack: i.stack },
           }),
@@ -1209,15 +1212,15 @@ function M(n, e = {}) {
   };
 }
 function B(n, e, s) {
-  let r, t, a = {};
+  let r, t, o = {};
   return typeof n == "string"
-    ? (r = n, t = e, a = s || {})
-    : (t = n, r = "", a = e || {}),
-    async function (...o) {
+    ? (r = n, t = e, o = s || {})
+    : (t = n, r = "", o = e || {}),
+    async function (...a) {
       let i = this instanceof f ? this : u.getStore();
-      if (!i) return await t(...o);
+      if (!i) return await t(...a);
       let c = t.name || "step", w = r || i.getSequentialId(c);
-      return i.executeStep(w, t.bind(i), o, a);
+      return i.executeStep(w, t.bind(i), a, o);
     };
 }
 export {
