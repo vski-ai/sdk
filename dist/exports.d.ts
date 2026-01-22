@@ -191,6 +191,7 @@ export declare class WorkflowBase {
   signalCursors: Map<string, number>;
   isSuspended: boolean;
   invokedSteps: Set<string>;
+  emittedEvents: Set<string>;
   constructor(client?: RocketBaseClient);
   parallel<T>(steps: (() => Promise<T>)[]): Promise<T[]>;
   /**
@@ -270,6 +271,7 @@ export declare function workflow(name: string, options?: {
       signalCursors: Map<string, number>;
       isSuspended: boolean;
       invokedSteps: Set<string>;
+      emittedEvents: Set<string>;
       parallel<T>(steps: (() => Promise<T>)[]): Promise<T[]>;
       getSequentialId(prefix: string): string;
       sleep(duration: number | string): Promise<void>;

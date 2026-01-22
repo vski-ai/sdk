@@ -19,6 +19,7 @@ export class WorkflowBase {
   public signalCursors = new Map<string, number>();
   public isSuspended = false;
   public invokedSteps = new Set<string>();
+  public emittedEvents = new Set<string>();
 
   constructor(client?: RocketBaseClient) {
     if (client) this.client = client;
@@ -34,7 +35,8 @@ export class WorkflowBase {
    * and can break long-running workflows during replay.
    */
   public getSequentialId(prefix: string) {
-    return `${prefix}-${this.callCounter++}`;
+    const id = `${prefix}-${this.callCounter++}`;
+    return id;
   }
 
   async sleep(duration: number | string): Promise<void> {
@@ -43,6 +45,11 @@ export class WorkflowBase {
 
     if (!this.runId) {
       throw new Error("Cannot sleep outside of a workflow context.");
+    }
+
+    if (this.emittedEvents.has(id)) {
+      this.isSuspended = true;
+      throw new WorkflowSuspension(`Sleeping for ${id}`);
     }
 
     let ms = 0;
@@ -69,6 +76,7 @@ export class WorkflowBase {
       correlationId: id,
       payload: { duration: ms, resumeAt: resumeAt.toISOString() },
     });
+    this.emittedEvents.add(id);
 
     this.isSuspended = true;
     throw new WorkflowSuspension(`Sleeping for ${ms}ms`);
@@ -103,11 +111,18 @@ export class WorkflowBase {
       throw new Error("Cannot wait for signal outside of a workflow context.");
     }
 
+    if (this.emittedEvents.has(id)) {
+      this.isSuspended = true;
+      throw new WorkflowSuspension(`Waiting for signal: ${name}`);
+    }
+
     await this.client.workflow.createEvent(this.runId, {
       eventType: "signal_waiting",
       correlationId: id,
       payload: { name },
     });
+    this.emittedEvents.add(id);
+
     this.isSuspended = true;
     throw new WorkflowSuspension(`Waiting for signal: ${name}`);
   }
@@ -133,6 +148,7 @@ export class WorkflowBase {
     this.history.clear();
     this.completedSteps.clear();
     this.invokedSteps.clear();
+    this.emittedEvents.clear();
     this.rollbackStack = [];
     this.stepAttempts.clear();
     this.signalQueues.clear();
@@ -141,6 +157,9 @@ export class WorkflowBase {
 
     for (const event of events) {
       const payload = event.payload || {};
+      if (event.correlationId) {
+        this.emittedEvents.add(event.correlationId);
+      }
       switch (event.eventType) {
         case "step_completed":
           this.completedSteps.add(event.correlationId);
@@ -210,11 +229,14 @@ export class WorkflowBase {
 
     while (true) {
       try {
-        await this.client.workflow.createEvent(this.runId, {
-          eventType: "step_started",
-          correlationId: id,
-          payload: { attempt },
-        });
+        if (!this.emittedEvents.has(id)) {
+          await this.client.workflow.createEvent(this.runId, {
+            eventType: "step_started",
+            correlationId: id,
+            payload: { attempt },
+          });
+          this.emittedEvents.add(id);
+        }
         const result = await fn.apply(this, args);
         await this.client.workflow.createEvent(this.runId, {
           eventType: "step_completed",

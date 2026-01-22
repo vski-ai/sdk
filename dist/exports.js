@@ -720,6 +720,7 @@ var f = class {
   signalCursors = new Map();
   isSuspended = !1;
   invokedSteps = new Set();
+  emittedEvents = new Set();
   constructor(e) {
     e && (this.client = e);
   }
@@ -734,6 +735,9 @@ var f = class {
     if (this.completedSteps.has(s)) return;
     if (!this.runId) {
       throw new Error("Cannot sleep outside of a workflow context.");
+    }
+    if (this.emittedEvents.has(s)) {
+      throw this.isSuspended = !0, new l(`Sleeping for ${s}`);
     }
     let r = 0;
     if (typeof e == "string") {
@@ -750,6 +754,7 @@ var f = class {
       correlationId: s,
       payload: { duration: r, resumeAt: t.toISOString() },
     }),
+      this.emittedEvents.add(s),
       this.isSuspended = !0,
       new l(`Sleeping for ${r}ms`);
   }
@@ -772,13 +777,16 @@ var f = class {
       }
     }
     throw this.runId
-      ? (await this.client.workflow.createEvent(this.runId, {
-        eventType: "signal_waiting",
-        correlationId: s,
-        payload: { name: e },
-      }),
-        this.isSuspended = !0,
-        new l(`Waiting for signal: ${e}`))
+      ? this.emittedEvents.has(s)
+        ? (this.isSuspended = !0, new l(`Waiting for signal: ${e}`))
+        : (await this.client.workflow.createEvent(this.runId, {
+          eventType: "signal_waiting",
+          correlationId: s,
+          payload: { name: e },
+        }),
+          this.emittedEvents.add(s),
+          this.isSuspended = !0,
+          new l(`Waiting for signal: ${e}`))
       : new Error("Cannot wait for signal outside of a workflow context.");
   }
   async runRollback(e) {
@@ -800,6 +808,7 @@ var f = class {
     this.history.clear(),
       this.completedSteps.clear(),
       this.invokedSteps.clear(),
+      this.emittedEvents.clear(),
       this.rollbackStack = [],
       this.stepAttempts.clear(),
       this.signalQueues.clear(),
@@ -807,7 +816,9 @@ var f = class {
       this.callCounter = 0;
     for (let s of e) {
       let r = s.payload || {};
-      switch (s.eventType) {
+      switch (
+        s.correlationId && this.emittedEvents.add(s.correlationId), s.eventType
+      ) {
         case "step_completed":
           this.completedSteps.add(s.correlationId),
             this.history.set(s.correlationId, r.output);
@@ -858,11 +869,13 @@ var f = class {
         o = this.stepAttempts.get(e);;
     ) {
       try {
-        await this.client.workflow.createEvent(this.runId, {
-          eventType: "step_started",
-          correlationId: e,
-          payload: { attempt: o },
-        });
+        this.emittedEvents.has(e) ||
+          (await this.client.workflow.createEvent(this.runId, {
+            eventType: "step_started",
+            correlationId: e,
+            payload: { attempt: o },
+          }),
+            this.emittedEvents.add(e));
         let i = await s.apply(this, r);
         return await this.client.workflow.createEvent(this.runId, {
           eventType: "step_completed",
