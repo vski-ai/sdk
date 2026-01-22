@@ -174,18 +174,24 @@ export declare class WorkflowBase {
 	signalQueues: Map<string, any[]>;
 	signalCursors: Map<string, number>;
 	isSuspended: boolean;
+	invokedSteps: Set<string>;
 	constructor(client?: RocketBaseClient);
 	parallel<T>(steps: (() => Promise<T>)[]): Promise<T[]>;
-	getDeterministicId(prefix: string): string;
+	/**
+	 * Generates a sequential ID for steps or sleeps that don't have a manual ID.
+	 * NOTE: This is order-dependent. Adding or removing steps will shift these IDs
+	 * and can break long-running workflows during replay.
+	 */
+	getSequentialId(prefix: string): string;
 	sleep(duration: number | string): Promise<void>;
 	waitForSignal<T = any>(name: string): Promise<T>;
 	runRollback(error: any): Promise<void>;
 	rebuildState(events: any[]): void;
-	executeStep(id: string, fn: (...args: any[]) => Promise<any>, args: any[], options?: {
+	executeStep<T>(id: string, fn: (...args: any[]) => Promise<T>, args: any[], options?: {
 		retries?: number;
 		rollback?: string[];
 		timeout?: string;
-	}): Promise<any>;
+	}): Promise<T>;
 }
 export declare function Workflow(name: string, options?: {
 	maxEvents?: number;
@@ -238,22 +244,23 @@ export declare function workflow(name: string, options?: {
 			signalQueues: Map<string, any[]>;
 			signalCursors: Map<string, number>;
 			isSuspended: boolean;
+			invokedSteps: Set<string>;
 			parallel<T>(steps: (() => Promise<T>)[]): Promise<T[]>;
-			getDeterministicId(prefix: string): string;
+			getSequentialId(prefix: string): string;
 			sleep(duration: number | string): Promise<void>;
 			waitForSignal<T = any>(name: string): Promise<T>;
 			runRollback(error: any): Promise<void>;
 			rebuildState(events: any[]): void;
-			executeStep(id: string, fn: (...args: any[]) => Promise<any>, args: any[], options?: {
+			executeStep<T>(id: string, fn: (...args: any[]) => Promise<T>, args: any[], options?: {
 				retries?: number;
 				rollback?: string[];
 				timeout?: string;
-			}): Promise<any>;
+			}): Promise<T>;
 		};
 		workflowName: string;
 	};
 };
-export declare function step(idOrFn: string | ((...args: any[]) => Promise<any>), fnOrOptions?: ((...args: any[]) => Promise<any>) | {
+export declare function step<T extends (...args: any[]) => Promise<any>>(idOrFn: string | T, fnOrOptions?: T | {
 	retries?: number;
 	rollback?: string[];
 	timeout?: string;
@@ -261,6 +268,6 @@ export declare function step(idOrFn: string | ((...args: any[]) => Promise<any>)
 	retries?: number;
 	rollback?: string[];
 	timeout?: string;
-}): (this: WorkflowContext | void, ...args: any[]) => Promise<any>;
+}): T;
 
 export {};

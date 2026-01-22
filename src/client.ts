@@ -72,6 +72,10 @@ export class RocketBaseClient {
 
   close() {
     if (this.realtimeSocket) {
+      this.realtimeSocket.onopen = null;
+      this.realtimeSocket.onmessage = null;
+      this.realtimeSocket.onerror = null;
+      this.realtimeSocket.onclose = null;
       this.realtimeSocket.close();
       this.realtimeSocket = null;
     }
@@ -623,7 +627,9 @@ export class RocketBaseClient {
     };
 
     this.realtimeSocket.onclose = () => {
-      setTimeout(() => this.connectRealtime(), 3000);
+      if (this.subscriptions.size > 0) {
+        setTimeout(() => this.connectRealtime(), 3000);
+      }
     };
   }
 

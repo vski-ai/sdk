@@ -84,45 +84,30 @@ export function workflow(
   };
 }
 
-export function step(
-  idOrFn: string | ((...args: any[]) => Promise<any>),
-  fnOrOptions?: ((...args: any[]) => Promise<any>) | {
+export function step<T extends (...args: any[]) => Promise<any>>(
+  idOrFn: string | T,
+  fnOrOptions?: T | {
     retries?: number;
     rollback?: string[];
     timeout?: string;
   },
   options?: { retries?: number; rollback?: string[]; timeout?: string },
-) {
+): T {
   let id: string;
-  let fn: (...args: any[]) => Promise<any>;
+  let fn: T;
   let opts: any = {};
 
   if (typeof idOrFn === "string") {
     id = idOrFn;
-    fn = fnOrOptions as any;
+    fn = fnOrOptions as T;
     opts = options || {};
   } else {
-    // Auto-generate ID if possible or require it?
-    // User example: const stepA = step(async () => {})
-    // We can't easily auto-generate stable IDs from anonymous functions without a build step.
-    // We'll require ID or use a random one (which breaks determinism on replay!).
-    // Ideally we require ID. But let's support the user example by assuming
-    // they might rely on execution order if we used a counter, but re-execution order must be deterministic.
-    // If the user assigns to a const, we don't know the const name.
-    // Let's THROW if no ID is provided for now to encourage best practice,
-    // OR generate one based on order if we had a global counter in context (but we define step OUTSIDE context).
-
-    // User example: `const stepA = step(async () => {})`
-    // This defines `stepA`.
-    // If we return a wrapper, when executed inside `run`, we can get the workflow instance.
-    // The instance has a call counter `getDeterministicId`. We can use that!
-
     fn = idOrFn;
     id = ""; // Will be generated at runtime
     opts = fnOrOptions || {};
   }
 
-  return async function (this: WorkflowContext | void, ...args: any[]) {
+  return (async function (this: WorkflowContext | void, ...args: any[]) {
     const context = (this instanceof WorkflowBase)
       ? this as unknown as WorkflowBase
       : ContextManager.getStore() as WorkflowBase;
@@ -133,9 +118,11 @@ export function step(
     }
 
     // Generate ID if missing using the context's deterministic counter
-    const effectiveId = id || context.getDeterministicId("step");
+    // Use function name as prefix if available to make it less brittle than just "step"
+    const prefix = fn.name || "step";
+    const effectiveId = id || context.getSequentialId(prefix);
 
     // We bind the function to the context so 'this' works inside the step implementation
     return context.executeStep(effectiveId, fn.bind(context), args, opts);
-  };
+  } as unknown) as T;
 }

@@ -18,6 +18,7 @@ export class WorkflowBase {
   public signalQueues = new Map<string, any[]>();
   public signalCursors = new Map<string, number>();
   public isSuspended = false;
+  public invokedSteps = new Set<string>();
 
   constructor(client?: RocketBaseClient) {
     if (client) this.client = client;
@@ -27,12 +28,17 @@ export class WorkflowBase {
     return await Promise.all(steps.map((s) => s()));
   }
 
-  public getDeterministicId(prefix: string) {
+  /**
+   * Generates a sequential ID for steps or sleeps that don't have a manual ID.
+   * NOTE: This is order-dependent. Adding or removing steps will shift these IDs
+   * and can break long-running workflows during replay.
+   */
+  public getSequentialId(prefix: string) {
     return `${prefix}-${this.callCounter++}`;
   }
 
   async sleep(duration: number | string): Promise<void> {
-    const id = this.getDeterministicId("sleep");
+    const id = this.getSequentialId("sleep");
     if (this.completedSteps.has(id)) return;
 
     if (!this.runId) {
@@ -69,7 +75,7 @@ export class WorkflowBase {
   }
 
   async waitForSignal<T = any>(name: string): Promise<T> {
-    const id = this.getDeterministicId(`signal-${name}`);
+    const id = this.getSequentialId(`signal-${name}`);
     if (this.history.has(id)) {
       const data = this.history.get(id) as T;
       // Sync cursor if this strictly matched signal is also in the queue at current position
@@ -126,6 +132,7 @@ export class WorkflowBase {
   rebuildState(events: any[]) {
     this.history.clear();
     this.completedSteps.clear();
+    this.invokedSteps.clear();
     this.rollbackStack = [];
     this.stepAttempts.clear();
     this.signalQueues.clear();
@@ -161,13 +168,20 @@ export class WorkflowBase {
     }
   }
 
-  async executeStep(
+  async executeStep<T>(
     id: string,
-    fn: (...args: any[]) => Promise<any>,
+    fn: (...args: any[]) => Promise<T>,
     args: any[],
     options: { retries?: number; rollback?: string[]; timeout?: string } = {},
-  ) {
+  ): Promise<T> {
     if (!this.runId) return fn.apply(this, args);
+
+    if (this.invokedSteps.has(id)) {
+      throw new Error(
+        `Duplicate step ID detected: "${id}". Each step within a workflow must have a unique ID.`,
+      );
+    }
+    this.invokedSteps.add(id);
 
     if (this.completedSteps.has(id)) return this.history.get(id);
 

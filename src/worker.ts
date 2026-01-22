@@ -3,6 +3,7 @@
 
 import { RocketBaseClient } from "./client.ts";
 import { WorkflowRegistry } from "./registry.ts";
+import { WorkflowSuspension } from "./suspension.ts";
 
 export class WorkflowWorker {
   private socket: WebSocket | null = null;
@@ -54,6 +55,10 @@ export class WorkflowWorker {
   async stop() {
     this.active = false;
     if (this.socket) {
+      this.socket.onopen = null;
+      this.socket.onmessage = null;
+      this.socket.onerror = null;
+      this.socket.onclose = null;
       this.socket.close();
       this.socket = null;
     }
@@ -73,6 +78,12 @@ export class WorkflowWorker {
 
   private connect(workflowName: string) {
     if (!this.active) return;
+    if (
+      this.socket &&
+      (this.socket.readyState === 0 || this.socket.readyState === 1)
+    ) {
+      return;
+    }
 
     // Use ws:// for http:// and wss:// for https://
     const token = this.client.getToken();
@@ -186,9 +197,20 @@ export class WorkflowWorker {
       // Ack the job
       clearInterval(heartbeatInterval);
       await this.client.workflow.ack(job.id);
-      console.log(`[Worker ${this.workflowName}] Job ${job.id} completed`);
+      if (instance.isSuspended) {
+        console.log(`[Worker ${this.workflowName}] Job ${job.id} suspended`);
+      } else {
+        console.log(`[Worker ${this.workflowName}] Job ${job.id} completed`);
+      }
     } catch (e: any) {
       clearInterval(heartbeatInterval);
+
+      if (e instanceof WorkflowSuspension) {
+        await this.client.workflow.ack(job.id);
+        console.log(`[Worker ${this.workflowName}] Job ${job.id} suspended`);
+        return;
+      }
+
       console.error(
         `[Worker ${this.workflowName}] Job ${job.id} failed:`,
         e.message,
