@@ -190,7 +190,7 @@ export class RocketBaseClient {
       return;
     }
 
-    const token = this.getToken();
+    const token = this.getToken() || this.apiKey;
     const wsUrl = this.baseUrl.replace(/^http/, "ws") +
       "/api/workflow/ws" +
       `?db=${this.dbName}` +

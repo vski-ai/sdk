@@ -189,3 +189,22 @@ await client.workflow.sendSignal(run.runId, "user-confirm", { success: true });
 - `parallel(steps[])`: Execute multiple steps concurrently with durability.
 - `runId`: The unique ID of the current execution.
 - `history`: Map of completed step results.
+
+### Browser
+
+When building for browsers omit node depenedencies:
+
+```javascript
+{
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+          resource.request = resource.request.replace(/^node:.*/, "noop");
+        }),
+      );
+    }
+    return config;
+  },
+}
+```

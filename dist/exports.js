@@ -82,7 +82,7 @@ var k = class {
         (this.workflowSocket.readyState === 0 ||
           this.workflowSocket.readyState === 1)
     ) return;
-    let e = this.getToken(),
+    let e = this.getToken() || this.apiKey,
       s = this.baseUrl.replace(/^http/, "ws") +
         `/api/workflow/ws?db=${this.dbName}` + (e ? `&auth=${e}` : "");
     this.workflowSocket = new WebSocket(s),
@@ -1231,7 +1231,7 @@ if (y) {
     );
 }
 var p = u;
-function H(n, e = {}) {
+function K(n, e = {}) {
   return {
     run: (s) => {
       let r = class extends d {
@@ -1286,7 +1286,7 @@ function H(n, e = {}) {
     },
   };
 }
-function K(n, e, s) {
+function H(n, e, s) {
   let r, t, o = {};
   return typeof n == "string"
     ? (r = n, t = e, o = s || {})
@@ -1301,8 +1301,8 @@ function K(n, e, s) {
 export {
   d as WorkflowBase,
   g as WorkflowWorker,
-  H as workflow,
-  K as step,
+  H as step,
+  K as workflow,
   k as RocketBaseClient,
   m as StopRollback,
   R as Step,
