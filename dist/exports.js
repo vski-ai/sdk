@@ -1,4 +1,4 @@
-var h = new Map();
+var w = new Map();
 var k = class {
   baseUrl;
   token = null;
@@ -6,7 +6,9 @@ var k = class {
   dbName = "postgres";
   adminDbName = "postgres";
   realtimeSocket = null;
+  workflowSocket = null;
   subscriptions = new Map();
+  workflowSubscriptions = new Map();
   constructor(e = "http://127.0.0.1:3000") {
     this.baseUrl = e.endsWith("/") ? e.slice(0, -1) : e,
       typeof window < "u" &&
@@ -44,7 +46,77 @@ var k = class {
       this.realtimeSocket.onerror = null,
       this.realtimeSocket.onclose = null,
       this.realtimeSocket.close(),
-      this.realtimeSocket = null), this.subscriptions.clear();
+      this.realtimeSocket = null),
+      this.workflowSocket &&
+      (this.workflowSocket.onopen = null,
+        this.workflowSocket.onmessage = null,
+        this.workflowSocket.onerror = null,
+        this.workflowSocket.onclose = null,
+        this.workflowSocket.close(),
+        this.workflowSocket = null),
+      this.subscriptions.clear(),
+      this.workflowSubscriptions.clear();
+  }
+  subscribeWorkflow(e, s) {
+    return this.workflowSubscriptions.has(e) ||
+      this.workflowSubscriptions.set(e, new Set()),
+      this.workflowSubscriptions.get(e).add(s),
+      this.connectWorkflow(),
+      this.workflowSocket?.readyState === 1 &&
+      this.workflowSocket.send(
+        JSON.stringify({
+          event: "SUBSCRIBE",
+          data: { queue: `__wkf_workflow_${e}` },
+        }),
+      ),
+      () => {
+        let r = this.workflowSubscriptions.get(e);
+        r &&
+          (r.delete(s), r.size === 0 && this.workflowSubscriptions.delete(e));
+      };
+  }
+  connectWorkflow() {
+    if (
+      typeof WebSocket > "u" ||
+      this.workflowSocket &&
+        (this.workflowSocket.readyState === 0 ||
+          this.workflowSocket.readyState === 1)
+    ) return;
+    let e = this.getToken(),
+      s = this.baseUrl.replace(/^http/, "ws") +
+        `/api/workflow/ws?db=${this.dbName}` + (e ? `&auth=${e}` : "");
+    this.workflowSocket = new WebSocket(s),
+      this.workflowSocket.onopen = () => {
+        this.workflowSubscriptions.forEach((r, t) => {
+          this.workflowSocket?.send(
+            JSON.stringify({
+              event: "SUBSCRIBE",
+              data: { queue: `__wkf_workflow_${t}` },
+            }),
+          );
+        });
+      },
+      this.workflowSocket.onmessage = (r) => {
+        try {
+          let t = JSON.parse(r.data);
+          if (t.event === "JOB") {
+            let o = t.data?.data?.workflowName;
+            if (!o) return;
+            let a = this.workflowSubscriptions.get(o);
+            if (a && a.size > 0) {
+              let i = Array.from(a),
+                c = i[Math.floor(Math.random() * i.length)];
+              c(t.data);
+            }
+          }
+        } catch (t) {
+          console.error("Error handling workflow message:", t);
+        }
+      },
+      this.workflowSocket.onclose = () => {
+        this.workflowSubscriptions.size > 0 &&
+          setTimeout(() => this.connectWorkflow(), 3e3);
+      };
   }
   get headers() {
     let e = { "Content-Type": "application/json", "x-dbname": this.dbName };
@@ -511,8 +583,8 @@ var k = class {
         return t.json();
       },
       trigger: async (r, t, o = {}) => {
-        let c = { ...h.get(r)?.prototype?.workflowOptions || {}, ...o },
-          w = await e.workflow.createRun({
+        let c = { ...w.get(r)?.prototype?.workflowOptions || {}, ...o },
+          h = await e.workflow.createRun({
             deploymentId: c.deploymentId || "sdk",
             workflowName: r,
             input: t,
@@ -520,11 +592,11 @@ var k = class {
           });
         return await e.workflow.queueMessage(`__wkf_workflow_${r}`, {
           type: "workflow_start",
-          runId: w.runId,
+          runId: h.runId,
           workflowName: r,
           input: t,
         }),
-          w;
+          h;
       },
       resume: async (r) => {
         let t = await e.workflow.getRun(r);
@@ -708,7 +780,7 @@ var l = class extends Error {
     super(e), this.name = "WorkflowSuspension";
   }
 };
-var f = class {
+var d = class {
   client;
   runId = "";
   workflowName = "unknown";
@@ -734,12 +806,21 @@ var f = class {
   }
   async sleep(e) {
     let s = this.getSequentialId("sleep");
-    if (this.completedSteps.has(s)) return;
+    if (this.completedSteps.has(s)) {
+      console.log(
+        `[Workflow ${this.workflowName}] Sleep ${s} already completed, skipping`,
+      );
+      return;
+    }
     if (!this.runId) {
       throw new Error("Cannot sleep outside of a workflow context.");
     }
     if (this.emittedEvents.has(s)) {
-      throw this.isSuspended = !0, new l(`Sleeping for ${s}`);
+      throw console.log(
+        `[Workflow ${this.workflowName}] Sleep ${s} already emitted, suspending`,
+      ),
+        this.isSuspended = !0,
+        new l(`Sleeping for ${s}`);
     }
     let r = 0;
     if (typeof e == "string") {
@@ -763,7 +844,11 @@ var f = class {
   async waitForSignal(e) {
     let s = this.getSequentialId(`signal-${e}`);
     if (this.history.has(s)) {
-      let t = this.history.get(s), o = this.signalQueues.get(e);
+      let t = this.history.get(s);
+      console.log(
+        `[Workflow ${this.workflowName}] Signal ${s} replayed from history`,
+      );
+      let o = this.signalQueues.get(e);
       if (o) {
         let a = this.signalCursors.get(e) || 0;
         a < o.length && o[a] === t && this.signalCursors.set(e, a + 1);
@@ -775,12 +860,20 @@ var f = class {
       let t = this.signalCursors.get(e) || 0;
       if (t < r.length) {
         let o = r[t];
-        return this.signalCursors.set(e, t + 1), o;
+        return console.log(
+          `[Workflow ${this.workflowName}] Signal ${s} pulled from signal queue at cursor ${t}`,
+        ),
+          this.signalCursors.set(e, t + 1),
+          o;
       }
     }
     throw this.runId
       ? this.emittedEvents.has(s)
-        ? (this.isSuspended = !0, new l(`Waiting for signal: ${e}`))
+        ? (console.log(
+          `[Workflow ${this.workflowName}] Signal ${s} already waiting, suspending`,
+        ),
+          this.isSuspended = !0,
+          new l(`Waiting for signal: ${e}`))
         : (await this.client.workflow.createEvent(this.runId, {
           eventType: "signal_waiting",
           correlationId: s,
@@ -815,7 +908,8 @@ var f = class {
       this.stepAttempts.clear(),
       this.signalQueues.clear(),
       this.signalCursors.clear(),
-      this.callCounter = 0;
+      this.callCounter = 0,
+      this.isSuspended = !1;
     for (let s of e) {
       let r = s.payload || {};
       switch (
@@ -852,7 +946,10 @@ var f = class {
       );
     }
     if (this.invokedSteps.add(e), this.completedSteps.has(e)) {
-      return this.history.get(e);
+      return console.log(
+        `[Workflow ${this.workflowName}] Step ${e} already completed, replaying from history`,
+      ),
+        this.history.get(e);
     }
     if (t.rollback) {
       for (let i of t.rollback) {
@@ -873,18 +970,24 @@ var f = class {
     ) {
       try {
         this.emittedEvents.has(e) ||
-          (await this.client.workflow.createEvent(this.runId, {
-            eventType: "step_started",
-            correlationId: e,
-            payload: { attempt: a },
-          }),
+          (console.log(
+            `[Workflow ${this.workflowName}] Step ${e} starting (Attempt ${a})`,
+          ),
+            await this.client.workflow.createEvent(this.runId, {
+              eventType: "step_started",
+              correlationId: e,
+              payload: { attempt: a },
+            }),
             this.emittedEvents.add(e));
         let i = await s.apply(this, r);
-        return await this.client.workflow.createEvent(this.runId, {
-          eventType: "step_completed",
-          correlationId: e,
-          payload: { output: i },
-        }),
+        return console.log(
+          `[Workflow ${this.workflowName}] Step ${e} completed`,
+        ),
+          await this.client.workflow.createEvent(this.runId, {
+            eventType: "step_completed",
+            correlationId: e,
+            payload: { output: i },
+          }),
           this.completedSteps.add(e),
           this.history.set(e, i),
           i;
@@ -910,9 +1013,9 @@ var f = class {
     }
   }
 };
-function P(n, e = {}) {
+function U(n, e = {}) {
   return function (s) {
-    h.set(n, s), s.prototype.workflowName = n, s.prototype.workflowOptions = e;
+    w.set(n, s), s.prototype.workflowName = n, s.prototype.workflowOptions = e;
     let r = s.prototype.run;
     r && (s.prototype.run = async function (...t) {
       let o = this;
@@ -947,7 +1050,7 @@ function P(n, e = {}) {
     });
   };
 }
-function U(n, e = {}) {
+function R(n, e = {}) {
   return function (s, r, t) {
     let o = t.value;
     t.value = async function (...a) {
@@ -955,32 +1058,40 @@ function U(n, e = {}) {
     };
   };
 }
-var m = class {
+var g = class {
   client;
-  socket;
   active;
-  workflowName;
+  workflowNames;
   stopCallback;
   activeJobs;
+  unsubscribers;
   constructor(e) {
     this.client = e,
-      this.socket = null,
       this.active = !1,
-      this.workflowName = "",
+      this.workflowNames = new Set(),
       this.stopCallback = null,
-      this.activeJobs = new Set();
+      this.activeJobs = new Set(),
+      this.unsubscribers = new Map();
   }
-  async start(e, s = {}) {
-    return this.active = !0,
-      this.workflowName = e,
-      this.connect(e),
-      s.resume &&
-      this.resumePending(e).catch((r) =>
-        console.error(`[Worker ${e}] Resume failed:`, r)
-      ),
-      new Promise((r) => {
-        this.stopCallback = r;
+  start(e, s = {}) {
+    this.active = !0;
+    let r = Array.isArray(e) ? e : [e];
+    for (let t of r) {
+      this.workflowNames.add(t);
+      let o = this.client.subscribeWorkflow(t, (a) => {
+        if (!this.active) return;
+        let i = this.processJob(a);
+        this.activeJobs.add(i), i.finally(() => this.activeJobs.delete(i));
       });
+      this.unsubscribers.set(t, o),
+        s.resume &&
+        this.resumePending(t).catch((a) =>
+          console.error(`[Worker ${t}] Resume failed:`, a)
+        );
+    }
+    return new Promise((t) => {
+      this.stopCallback = t;
+    });
   }
   async resumePending(e) {
     let s = await this.client.workflow.listRuns({
@@ -991,181 +1102,145 @@ var m = class {
         workflowName: e,
         status: "running",
       }),
-      t = [...s.items, ...r.items];
+      t = [...s.items || s.data || [], ...r.items || r.data || []];
     console.log(`[Worker ${e}] Resuming ${t.length} runs`);
     for (let o of t) await this.client.workflow.resume(o.runId);
   }
   async stop() {
-    this.active = !1,
-      this.socket &&
-      (this.socket.onopen = null,
-        this.socket.onmessage = null,
-        this.socket.onerror = null,
-        this.socket.onclose = null,
-        this.socket.close(),
-        this.socket = null),
+    this.active = !1;
+    for (let e of this.unsubscribers.values()) e();
+    this.unsubscribers.clear(),
       this.activeJobs.size > 0 &&
       (console.log(
-        `[Worker ${this.workflowName}] Waiting for ${this.activeJobs.size} jobs to complete...`,
+        `[Worker] Waiting for ${this.activeJobs.size} jobs to complete...`,
       ),
         await Promise.allSettled(this.activeJobs)),
       this.stopCallback && (this.stopCallback(), this.stopCallback = null);
   }
-  connect(e) {
-    if (
-      !this.active ||
-      this.socket &&
-        (this.socket.readyState === 0 || this.socket.readyState === 1)
-    ) return;
-    let s = this.client.getToken(),
-      r = this.client.baseUrl.replace(/^http/, "ws") +
-        `/api/workflow/ws?db=${this.client.dbName}` + (s ? `&auth=${s}` : "");
-    this.socket = new WebSocket(r),
-      this.socket.onopen = () => {
-        console.log(`[Worker ${e}] Connected to ${r}`),
-          this.socket?.send(
-            JSON.stringify({
-              event: "SUBSCRIBE",
-              data: { queue: `__wkf_workflow_${e}` },
-            }),
-          );
-      },
-      this.socket.onmessage = (t) => {
-        try {
-          let o = JSON.parse(t.data);
-          if (o.event === "JOB") {
-            let a = this.processJob(o.data);
-            this.activeJobs.add(a), a.finally(() => this.activeJobs.delete(a));
-          }
-        } catch (o) {
-          console.error(`[Worker ${e}] Error handling message:`, o);
-        }
-      },
-      this.socket.onclose = () => {
-        this.active &&
-          (console.log(`[Worker ${e}] Disconnected, retrying...`),
-            setTimeout(() => this.connect(e), 3e3));
-      },
-      this.socket.onerror = (t) => {
-        console.error(`[Worker ${e}] WebSocket error:`, t);
-      };
-  }
   async processJob(e) {
-    console.log(`[Worker ${this.workflowName}] Processing job ${e.id}`);
-    let { runId: s, input: r } = e.data,
-      t = setInterval(async () => {
+    let s = e.data.workflowName || "unknown";
+    console.log(`[Worker ${s}] Processing job ${e.id}`);
+    let { runId: r, input: t } = e.data,
+      o = setInterval(async () => {
         try {
           await this.client.workflow.touch(e.id);
         } catch {
-          console.warn(
-            `[Worker ${this.workflowName}] Heartbeat failed for job ${e.id}`,
-          );
+          console.warn(`[Worker ${s}] Heartbeat failed for job ${e.id}`);
         }
       }, 15e3);
-    if (e.data.workflowName && e.data.workflowName !== this.workflowName) {
+    if (e.data.workflowName && !this.workflowNames.has(e.data.workflowName)) {
       console.warn(
-        `[Worker ${this.workflowName}] Received job for ${e.data.workflowName}, ignoring`,
+        `[Worker] Received job for ${e.data.workflowName}, but not registered to handle it. Ignoring.`,
       ),
-        clearInterval(t),
+        clearInterval(o),
         await this.client.workflow.nack(e.id);
       return;
     }
     try {
-      let [o, a] = await Promise.all([
-          this.client.workflow.getRun(s),
-          this.client.workflow.listEvents(s),
+      let [a, i] = await Promise.all([
+          this.client.workflow.getRun(r),
+          this.client.workflow.listEvents(r),
         ]),
-        i = h.get(this.workflowName);
-      if (!i) {
+        c = w.get(s);
+      if (!c) {
         console.error(
-          `[Worker ${this.workflowName}] Workflow class not found in registry. Registered:`,
-          Array.from(h.keys()),
+          `[Worker ${s}] Workflow class not found in registry. Registered:`,
+          Array.from(w.keys()),
         ),
-          clearInterval(t),
+          clearInterval(o),
           await this.client.workflow.nack(e.id);
         return;
       }
-      let c = new i(this.client);
-      c.runId = s, c.rebuildState(a);
-      let w = o.executionTimeout || 3e4,
-        p,
-        y = new Promise((b, S) => {
-          p = setTimeout(
-            () => S(new Error("CircuitBreaker: Execution timeout")),
-            w,
+      let h = new c(this.client);
+      h.runId = r, h.rebuildState(i);
+      let S = a.executionTimeout || 3e4,
+        f,
+        b = new Promise((E, $) => {
+          f = setTimeout(
+            () => $(new Error("CircuitBreaker: Execution timeout")),
+            S,
           );
         });
       try {
-        await Promise.race([c.run(...r || []), y]);
+        await Promise.race([h.run(...t || []), b]);
       } finally {
-        clearTimeout(p);
+        f && clearTimeout(f);
       }
-      clearInterval(t),
+      clearInterval(o),
         await this.client.workflow.ack(e.id),
-        c.isSuspended
-          ? console.log(`[Worker ${this.workflowName}] Job ${e.id} suspended`)
-          : console.log(`[Worker ${this.workflowName}] Job ${e.id} completed`);
-    } catch (o) {
-      if (clearInterval(t), o instanceof l) {
+        h.isSuspended
+          ? console.log(`[Worker ${s}] Job ${e.id} suspended`)
+          : console.log(`[Worker ${s}] Job ${e.id} completed`);
+    } catch (a) {
+      if (clearInterval(o), a instanceof l) {
         await this.client.workflow.ack(e.id),
-          console.log(`[Worker ${this.workflowName}] Job ${e.id} suspended`);
+          console.log(`[Worker ${s}] Job ${e.id} suspended`);
         return;
       }
+      let i = a instanceof Error ? a.message : String(a);
       if (
-        console.error(
-          `[Worker ${this.workflowName}] Job ${e.id} failed:`,
-          o.message,
-        ), o.message === "CircuitBreaker: Execution timeout"
+        console.error(`[Worker ${s}] Job ${e.id} failed:`, i),
+          i === "CircuitBreaker: Execution timeout"
       ) {
         try {
-          await this.client.workflow.updateRun(s, {
+          await this.client.workflow.updateRun(r, {
             status: "failed",
-            error: { message: o.message },
+            error: { message: i },
           });
-        } catch (a) {
-          console.error(
-            `[Worker ${this.workflowName}] Failed to update run status:`,
-            a,
-          );
+        } catch (c) {
+          console.error(`[Worker ${s}] Failed to update run status:`, c);
         }
       }
       await this.client.workflow.ack(e.id);
     }
   }
 };
-var g = class extends Error {
+var m = class extends Error {
   constructor(e = "Rollback stopped") {
     super(e), this.name = "StopRollback";
   }
 };
-var d = null,
+var u,
+  y = globalThis.AsyncLocalStorage ||
+    (await import("node:async_hooks").catch(() => ({}))).AsyncLocalStorage;
+if (y) {
+  let n = new y();
+  u = { run: (e, s) => n.run(e, s), getStore: () => n.getStore() };
+} else {
+  let n = null;
   u = {
-    run: (n, e) => {
-      let s = d;
-      d = n;
+    run: (e, s) => {
+      let r = n;
+      n = e;
       try {
-        let r = e();
-        return r instanceof Promise
-          ? r.finally(() => {
-            d = s;
+        let t = s();
+        return t instanceof Promise
+          ? t.finally(() => {
+            n = r;
           })
-          : (d = s, r);
-      } catch (r) {
-        throw d = s, r;
+          : (n = r, t);
+      } catch (t) {
+        throw n = r, t;
       }
     },
-    getStore: () => d,
-  };
-function M(n, e = {}) {
+    getStore: () => n,
+  },
+    typeof window < "u" &&
+    console.warn(
+      "[RocketBase] Using global context storage. Interleaved functional workflow execution might be non-deterministic in browser.",
+    );
+}
+var p = u;
+function H(n, e = {}) {
   return {
     run: (s) => {
-      let r = class extends f {
+      let r = class extends d {
         static workflowName = n;
         workflowName = n;
         workflowOptions = e;
         async run(...o) {
           let a = this;
-          return await u.run(this, async () => {
+          return await p.run(this, async () => {
             try {
               return await s.call(a, a, ...o);
             } catch (i) {
@@ -1174,7 +1249,7 @@ function M(n, e = {}) {
           });
         }
       };
-      h.set(n, r);
+      w.set(n, r);
       let t = r.prototype.run;
       return r.prototype.run = async function (...o) {
         let a = this;
@@ -1211,27 +1286,27 @@ function M(n, e = {}) {
     },
   };
 }
-function B(n, e, s) {
+function K(n, e, s) {
   let r, t, o = {};
   return typeof n == "string"
     ? (r = n, t = e, o = s || {})
     : (t = n, r = "", o = e || {}),
     async function (...a) {
-      let i = this instanceof f ? this : u.getStore();
+      let i = this instanceof d ? this : p.getStore();
       if (!i) return await t(...a);
-      let c = t.name || "step", w = r || i.getSequentialId(c);
-      return i.executeStep(w, t.bind(i), a, o);
+      let c = t.name || "step", h = r || i.getSequentialId(c);
+      return i.executeStep(h, t.bind(i), a, o);
     };
 }
 export {
-  B as step,
-  f as WorkflowBase,
-  g as StopRollback,
-  h as WorkflowRegistry,
+  d as WorkflowBase,
+  g as WorkflowWorker,
+  H as workflow,
+  K as step,
   k as RocketBaseClient,
-  M as workflow,
-  m as WorkflowWorker,
-  P as Workflow,
-  U as Step,
+  m as StopRollback,
+  R as Step,
+  U as Workflow,
+  w as WorkflowRegistry,
 };
 //# sourceMappingURL=exports.js.map

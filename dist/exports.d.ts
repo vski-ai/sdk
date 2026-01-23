@@ -444,7 +444,9 @@ export declare class RocketBaseClient {
   dbName: string;
   private adminDbName;
   private realtimeSocket;
+  private workflowSocket;
   private subscriptions;
+  private workflowSubscriptions;
   /**
    * Creates a new instance of the RocketBase client.
    * @param baseUrl - The base URL of the RocketBase server (default: http://127.0.0.1:3000).
@@ -480,6 +482,18 @@ export declare class RocketBaseClient {
    * Closes the client and terminates any active realtime connections.
    */
   close(): void;
+  /**
+   * Subscribes a worker to jobs for a specific workflow.
+   * @param workflowName - The name of the workflow.
+   * @param callback - Function called when a job is received.
+   * @returns A function to unsubscribe.
+   */
+  subscribeWorkflow(
+    workflowName: string,
+    callback: (job: any) => void,
+  ): () => void;
+  /** Connects to the workflow WebSocket server. */
+  private connectWorkflow;
   /** Headers for standard requests. */
   private get headers();
   /** Headers for administrative requests. */
@@ -779,14 +793,14 @@ export declare class WorkflowBase {
    * @returns The data payload associated with the signal.
    * @throws {WorkflowSuspension} When waiting for the signal, suspending execution until it arrives.
    */
-  waitForSignal<T = any>(name: string): Promise<T>;
+  waitForSignal<T = unknown>(name: string): Promise<T>;
   /**
    * Executes the rollback stack in reverse order.
    * This is called when a workflow fails and needs to compensate for completed steps.
    * @param error - The error that triggered the rollback.
    * @returns A promise that resolves when the rollback is complete.
    */
-  runRollback(error: any): Promise<void>;
+  runRollback(error: unknown): Promise<void>;
   /**
    * Reconstructs the workflow state from a list of events.
    * Used when resuming a workflow or replaying history.
@@ -836,23 +850,23 @@ export declare function Step(
  */
 export declare class WorkflowWorker {
   private client;
-  private socket;
   private active;
-  private workflowName;
+  private workflowNames;
   private stopCallback;
   private activeJobs;
+  private unsubscribers;
   /**
    * Creates a new instance of WorkflowWorker.
    * @param client - The RocketBase client instance.
    */
   constructor(client: RocketBaseClient);
   /**
-   * Starts the worker for a specific workflow.
-   * @param workflowName - The name of the workflow to process.
+   * Starts the worker for one or more workflows.
+   * @param workflowName - The name of the workflow(s) to process.
    * @param options - Options for concurrency and resuming pending runs.
    * @returns A promise that resolves when the worker is stopped.
    */
-  start(workflowName: string, options?: {
+  start(workflowName: string | string[], options?: {
     concurrency?: number;
     resume?: boolean;
   }): Promise<void>;
@@ -866,11 +880,6 @@ export declare class WorkflowWorker {
    * @returns A promise that resolves when the worker is fully stopped.
    */
   stop(): Promise<void>;
-  /**
-   * Establishes a WebSocket connection to the workflow server.
-   * @param workflowName - The name of the workflow to subscribe to.
-   */
-  private connect;
   /**
    * Processes a single job assignment.
    * Reconstructs the workflow state and attempts to execute it.

@@ -661,7 +661,28 @@
 <a href='#L125' id='L125'>125</a>
 <a href='#L126' id='L126'>126</a>
 <a href='#L127' id='L127'>127</a>
-<a href='#L128' id='L128'>128</a></pre>
+<a href='#L128' id='L128'>128</a>
+<a href='#L129' id='L129'>129</a>
+<a href='#L130' id='L130'>130</a>
+<a href='#L131' id='L131'>131</a>
+<a href='#L132' id='L132'>132</a>
+<a href='#L133' id='L133'>133</a>
+<a href='#L134' id='L134'>134</a>
+<a href='#L135' id='L135'>135</a>
+<a href='#L136' id='L136'>136</a>
+<a href='#L137' id='L137'>137</a>
+<a href='#L138' id='L138'>138</a>
+<a href='#L139' id='L139'>139</a>
+<a href='#L140' id='L140'>140</a>
+<a href='#L141' id='L141'>141</a>
+<a href='#L142' id='L142'>142</a>
+<a href='#L143' id='L143'>143</a>
+<a href='#L144' id='L144'>144</a>
+<a href='#L145' id='L145'>145</a>
+<a href='#L146' id='L146'>146</a>
+<a href='#L147' id='L147'>147</a>
+<a href='#L148' id='L148'>148</a>
+<a href='#L149' id='L149'>149</a></pre>
             </td>
             <td class="line-coverage quiet">
               <pre>
@@ -674,12 +695,29 @@
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-yes' title='This line is covered 34 times'>x34</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-yes' title='This line is covered 34 times'>x34</span>
 <span class='cline-any cline-yes' title='This line is covered 34 times'>x34</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-yes' title='This line is covered 49 times'>x49</span>
 <span class='cline-any cline-yes' title='This line is covered 49 times'>x49</span>
@@ -751,12 +789,16 @@
 <span class='cline-any cline-yes' title='This line is covered 34 times'>x34</span>
 <span class='cline-any cline-yes' title='This line is covered 34 times'>x34</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
-<span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
-<span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
-<span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
+<span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
@@ -839,6 +881,23 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <span class='missing-if-branch' title='branch condition is missed in this line'>I</span>
 
 <span class='missing-if-branch' title='branch condition is missed in this line'>I</span>
@@ -866,6 +925,10 @@
 
 
 <span class='missing-if-branch' title='branch condition is missed in this line'>I</span>
+
+
+
+
 
 
 
@@ -935,19 +998,36 @@ import { WorkflowRegistry } from "./registry.ts";
 import { WorkflowBase } from "./workflow-base.ts";
 import { WorkflowContext as ContextManager } from "./context.ts";
 import { WorkflowSuspension } from "./suspension.ts";
-import type { WorkflowContext } from "./types.ts";
+import type { StepOptions, WorkflowContext, WorkflowOptions } from "./types.ts";
 
+/**
+ * Defines a functional workflow.
+ * @param name - The unique name of the workflow.
+ * @param options - Configuration options for the workflow.
+ * @returns An object with a `run` method to define the workflow logic.
+ */
 export function workflow(
   name: string,
-  options: { maxEvents?: number; executionTimeout?: number } = {},
-) {
+  options: WorkflowOptions = {},
+): {
+  run: (
+    fn: (ctx: WorkflowContext, ...args: any[]) =&gt; Promise&lt;any&gt;,
+  ) =&gt; typeof WorkflowBase;
+} {
   return {
-    run: (fn: (ctx: WorkflowContext, ...args: any[]) =&gt; Promise&lt;any&gt;) =&gt; {
+    /**
+     * Defines the execution logic of the workflow.
+     * @param fn - A function that takes a context object and arguments, returning a Promise.
+     * @returns A class constructor that implements the workflow.
+     */
+    run: (
+      fn: (ctx: WorkflowContext, ...args: any[]) =&gt; Promise&lt;any&gt;,
+    ): typeof WorkflowBase =&gt; {
       // Create a dynamic class that extends WorkflowBase
       const FunctionalWorkflow = class extends WorkflowBase {
         static workflowName = name;
-        workflowName = name;
-        workflowOptions = options;
+        override workflowName = name;
+        override workflowOptions = options;
 
         async run(...args: any[]) {
           const self = this;
@@ -1014,18 +1094,22 @@ export function workflow(
   };
 }
 
+/**
+ * Defines a step within a functional workflow.
+ * Can be used to wrap a function or define a block of code as a step.
+ * @param idOrFn - The step ID (string) or the function to wrap.
+ * @param fnOrOptions - The function (if ID was first) or options (if function was first).
+ * @param options - Options for retries, rollback, etc. (if ID was first).
+ * @returns A wrapped function that executes as a workflow step.
+ */
 export function step&lt;T extends (...args: any[]) =&gt; Promise&lt;any&gt;&gt;(
   idOrFn: string | T,
-  fnOrOptions?: T | {
-    retries?: number;
-    rollback?: string[];
-    timeout?: string;
-  },
-  options?: { retries?: number; rollback?: string[]; timeout?: string },
+  fnOrOptions?: T | StepOptions,
+  options?: StepOptions,
 ): T {
   let id: string;
   let fn: T;
-  let opts: any = {};
+  let opts: StepOptions = {};
 
   if (typeof idOrFn === "string") {
     id = idOrFn;
@@ -1034,7 +1118,7 @@ export function step&lt;T extends (...args: any[]) =&gt; Promise&lt;any&gt;&gt;(
   } else {
     fn = idOrFn;
     id = ""; // Will be generated at runtime
-    opts = fnOrOptions || {};
+    opts = (fnOrOptions as StepOptions) || {};
   }
 
   return (async function (this: WorkflowContext | void, ...args: any[]) {
@@ -1067,7 +1151,7 @@ export function step&lt;T extends (...args: any[]) =&gt; Promise&lt;any&gt;&gt;(
     <div class="footer quiet pad2 space-top1 center small">
       Code coverage generated by
       <a href="https://deno.com/" target="_blank">Deno v2.6.5</a>
-      at Thu, 22 Jan 2026 01:18:56 +0000
+      at Fri, 23 Jan 2026 15:00:01 +0000
     </div>
   </body>
 </html>

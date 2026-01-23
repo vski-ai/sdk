@@ -33,6 +33,7 @@ export class RocketBaseClient {
   public dbName: string = "postgres"; // Changed to public for Worker access
   private adminDbName: string = "postgres";
   private realtimeSocket: WebSocket | null = null;
+  private workflowSocket: WebSocket | null = null;
   private subscriptions = new Map<
     string,
     {
@@ -40,6 +41,7 @@ export class RocketBaseClient {
       options?: SubscriptionOptions;
     }
   >();
+  private workflowSubscriptions = new Map<string, Set<(job: any) => void>>();
 
   /**
    * Creates a new instance of the RocketBase client.
@@ -129,7 +131,109 @@ export class RocketBaseClient {
       this.realtimeSocket.close();
       this.realtimeSocket = null;
     }
+    if (this.workflowSocket) {
+      this.workflowSocket.onopen = null;
+      this.workflowSocket.onmessage = null;
+      this.workflowSocket.onerror = null;
+      this.workflowSocket.onclose = null;
+      this.workflowSocket.close();
+      this.workflowSocket = null;
+    }
     this.subscriptions.clear();
+    this.workflowSubscriptions.clear();
+  }
+
+  /**
+   * Subscribes a worker to jobs for a specific workflow.
+   * @param workflowName - The name of the workflow.
+   * @param callback - Function called when a job is received.
+   * @returns A function to unsubscribe.
+   */
+  subscribeWorkflow(
+    workflowName: string,
+    callback: (job: any) => void,
+  ): () => void {
+    if (!this.workflowSubscriptions.has(workflowName)) {
+      this.workflowSubscriptions.set(workflowName, new Set());
+    }
+    this.workflowSubscriptions.get(workflowName)!.add(callback);
+    this.connectWorkflow();
+
+    if (this.workflowSocket?.readyState === 1) {
+      this.workflowSocket.send(
+        JSON.stringify({
+          event: "SUBSCRIBE",
+          data: { queue: `__wkf_workflow_${workflowName}` },
+        }),
+      );
+    }
+
+    return () => {
+      const subs = this.workflowSubscriptions.get(workflowName);
+      if (subs) {
+        subs.delete(callback);
+        if (subs.size === 0) {
+          this.workflowSubscriptions.delete(workflowName);
+        }
+      }
+    };
+  }
+
+  /** Connects to the workflow WebSocket server. */
+  private connectWorkflow(): void {
+    if (typeof WebSocket === "undefined") return;
+    if (
+      this.workflowSocket &&
+      (this.workflowSocket.readyState === 0 ||
+        this.workflowSocket.readyState === 1)
+    ) {
+      return;
+    }
+
+    const token = this.getToken();
+    const wsUrl = this.baseUrl.replace(/^http/, "ws") +
+      "/api/workflow/ws" +
+      `?db=${this.dbName}` +
+      (token ? `&auth=${token}` : "");
+
+    this.workflowSocket = new WebSocket(wsUrl);
+
+    this.workflowSocket.onopen = () => {
+      this.workflowSubscriptions.forEach((_, name) => {
+        this.workflowSocket?.send(
+          JSON.stringify({
+            event: "SUBSCRIBE",
+            data: { queue: `__wkf_workflow_${name}` },
+          }),
+        );
+      });
+    };
+
+    this.workflowSocket.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.event === "JOB") {
+          const workflowName = msg.data?.data?.workflowName;
+          if (!workflowName) return;
+
+          const subs = this.workflowSubscriptions.get(workflowName);
+          if (subs && subs.size > 0) {
+            // Load balance among local workers if multiple exist
+            const arr = Array.from(subs);
+            const listener = arr[Math.floor(Math.random() * arr.length)];
+            listener(msg.data);
+          }
+        }
+      } catch (e) {
+        console.error("Error handling workflow message:", e);
+      }
+    };
+
+    this.workflowSocket.onclose = () => {
+      if (this.workflowSubscriptions.size > 0) {
+        setTimeout(() => this.connectWorkflow(), 3000);
+      }
+    };
   }
 
   /** Headers for standard requests. */

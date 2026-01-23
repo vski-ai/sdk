@@ -80,13 +80,21 @@ export class WorkflowBase {
    */
   async sleep(duration: number | string): Promise<void> {
     const id = this.getSequentialId("sleep");
-    if (this.completedSteps.has(id)) return;
+    if (this.completedSteps.has(id)) {
+      console.log(
+        `[Workflow ${this.workflowName}] Sleep ${id} already completed, skipping`,
+      );
+      return;
+    }
 
     if (!this.runId) {
       throw new Error("Cannot sleep outside of a workflow context.");
     }
 
     if (this.emittedEvents.has(id)) {
+      console.log(
+        `[Workflow ${this.workflowName}] Sleep ${id} already emitted, suspending`,
+      );
       this.isSuspended = true;
       throw new WorkflowSuspension(`Sleeping for ${id}`);
     }
@@ -128,10 +136,13 @@ export class WorkflowBase {
    * @returns The data payload associated with the signal.
    * @throws {WorkflowSuspension} When waiting for the signal, suspending execution until it arrives.
    */
-  async waitForSignal<T = any>(name: string): Promise<T> {
+  async waitForSignal<T = unknown>(name: string): Promise<T> {
     const id = this.getSequentialId(`signal-${name}`);
     if (this.history.has(id)) {
       const data = this.history.get(id) as T;
+      console.log(
+        `[Workflow ${this.workflowName}] Signal ${id} replayed from history`,
+      );
       // Sync cursor if this strictly matched signal is also in the queue at current position
       const queue = this.signalQueues.get(name);
       if (queue) {
@@ -148,6 +159,9 @@ export class WorkflowBase {
       const cursor = this.signalCursors.get(name) || 0;
       if (cursor < queue.length) {
         const data = queue[cursor];
+        console.log(
+          `[Workflow ${this.workflowName}] Signal ${id} pulled from signal queue at cursor ${cursor}`,
+        );
         this.signalCursors.set(name, cursor + 1);
         return data as T;
       }
@@ -158,6 +172,9 @@ export class WorkflowBase {
     }
 
     if (this.emittedEvents.has(id)) {
+      console.log(
+        `[Workflow ${this.workflowName}] Signal ${id} already waiting, suspending`,
+      );
       this.isSuspended = true;
       throw new WorkflowSuspension(`Waiting for signal: ${name}`);
     }
@@ -179,16 +196,17 @@ export class WorkflowBase {
    * @param error - The error that triggered the rollback.
    * @returns A promise that resolves when the rollback is complete.
    */
-  async runRollback(error: any): Promise<void> {
-    const accumulator: Record<string, any> = {};
+  async runRollback(error: unknown): Promise<void> {
+    const accumulator: Record<string, unknown> = {};
     const stack = [...this.rollbackStack];
     while (stack.length > 0) {
       const method = stack.pop()!;
-      if (typeof (this as any)[method] === "function") {
+      if (typeof (this as Record<string, unknown>)[method] === "function") {
         try {
-          const result = await (this as any)[method](error, accumulator);
+          const result = await (this as unknown as Record<string, Function>)
+            [method](error, accumulator);
           accumulator[method] = result;
-        } catch (e: any) {
+        } catch (e) {
           if (e.name === "StopRollback") break;
           console.error(`Rollback method ${method} failed:`, e.message);
         }
@@ -211,6 +229,7 @@ export class WorkflowBase {
     this.signalQueues.clear();
     this.signalCursors.clear();
     this.callCounter = 0;
+    this.isSuspended = false;
 
     for (const event of events) {
       const payload = event.payload || {};
@@ -271,7 +290,12 @@ export class WorkflowBase {
     }
     this.invokedSteps.add(id);
 
-    if (this.completedSteps.has(id)) return this.history.get(id) as T;
+    if (this.completedSteps.has(id)) {
+      console.log(
+        `[Workflow ${this.workflowName}] Step ${id} already completed, replaying from history`,
+      );
+      return this.history.get(id) as T;
+    }
 
     if (options.rollback) {
       for (const method of options.rollback) {
@@ -299,6 +323,9 @@ export class WorkflowBase {
     while (true) {
       try {
         if (!this.emittedEvents.has(id)) {
+          console.log(
+            `[Workflow ${this.workflowName}] Step ${id} starting (Attempt ${attempt})`,
+          );
           await this.client.workflow.createEvent(this.runId, {
             eventType: "step_started",
             correlationId: id,
@@ -307,6 +334,7 @@ export class WorkflowBase {
           this.emittedEvents.add(id);
         }
         const result = await fn.apply(this, args);
+        console.log(`[Workflow ${this.workflowName}] Step ${id} completed`);
         await this.client.workflow.createEvent(this.runId, {
           eventType: "step_completed",
           correlationId: id,
@@ -315,7 +343,7 @@ export class WorkflowBase {
         this.completedSteps.add(id);
         this.history.set(id, result);
         return result;
-      } catch (e: any) {
+      } catch (e) {
         if (attempt < maxRetries) {
           attempt++;
           this.stepAttempts.set(id, attempt);

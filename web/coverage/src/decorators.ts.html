@@ -611,7 +611,26 @@
 <a href='#L75' id='L75'>75</a>
 <a href='#L76' id='L76'>76</a>
 <a href='#L77' id='L77'>77</a>
-<a href='#L78' id='L78'>78</a></pre>
+<a href='#L78' id='L78'>78</a>
+<a href='#L79' id='L79'>79</a>
+<a href='#L80' id='L80'>80</a>
+<a href='#L81' id='L81'>81</a>
+<a href='#L82' id='L82'>82</a>
+<a href='#L83' id='L83'>83</a>
+<a href='#L84' id='L84'>84</a>
+<a href='#L85' id='L85'>85</a>
+<a href='#L86' id='L86'>86</a>
+<a href='#L87' id='L87'>87</a>
+<a href='#L88' id='L88'>88</a>
+<a href='#L89' id='L89'>89</a>
+<a href='#L90' id='L90'>90</a>
+<a href='#L91' id='L91'>91</a>
+<a href='#L92' id='L92'>92</a>
+<a href='#L93' id='L93'>93</a>
+<a href='#L94' id='L94'>94</a>
+<a href='#L95' id='L95'>95</a>
+<a href='#L96' id='L96'>96</a>
+<a href='#L97' id='L97'>97</a></pre>
             </td>
             <td class="line-coverage quiet">
               <pre>
@@ -620,7 +639,15 @@
 <span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
@@ -677,9 +704,20 @@
 <span class='cline-any cline-yes' title='This line is covered 33 times'>x33</span>
 <span class='cline-any cline-yes' title='This line is covered 33 times'>x33</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
 <span class='cline-any cline-yes' title='This line is covered 19 times'>x19</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-neutral'>&nbsp;</span>
 <span class='cline-any cline-yes' title='This line is covered 51 times'>x51</span>
 <span class='cline-any cline-yes' title='This line is covered 51 times'>x51</span>
@@ -715,26 +753,6 @@
 
 
 
-<span class='missing-if-branch' title='branch condition is missed in this line'>I</span>
-
-<span class='missing-if-branch' title='branch condition is missed in this line'>I</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -744,6 +762,45 @@
 
 
 <span class='missing-if-branch' title='branch condition is missed in this line'>I</span>
+
+<span class='missing-if-branch' title='branch condition is missed in this line'>I</span>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class='missing-if-branch' title='branch condition is missed in this line'>I</span>
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -782,14 +839,22 @@
 //
 
 import { WorkflowRegistry } from "./registry.ts";
+import type { StepOptions, WorkflowOptions } from "./types.ts";
 import type { WorkflowBase } from "./workflow-base.ts";
 import { WorkflowSuspension } from "./suspension.ts";
 
+/**
+ * Decorator to define a class as a Workflow.
+ * Wraps the class to handle initialization, execution, and state management via RocketBase.
+ * @param name - The unique name of the workflow.
+ * @param options - Configuration options for the workflow (e.g., max events, timeout).
+ * @returns A class decorator function.
+ */
 export function Workflow(
   name: string,
-  options: { maxEvents?: number; executionTimeout?: number } = {},
-) {
-  return function (constructor: Function) {
+  options: WorkflowOptions = {},
+): (constructor: Function) =&gt; void {
+  return function (constructor: Function): void {
     WorkflowRegistry.set(name, constructor);
     constructor.prototype.workflowName = name;
     constructor.prototype.workflowOptions = options;
@@ -840,15 +905,26 @@ export function Workflow(
   };
 }
 
+/**
+ * Decorator to define a method as a Step within a Workflow.
+ * Wraps the method to provide idempotency, retries, and rollback capabilities.
+ * @param id - The unique identifier for the step.
+ * @param options - Options for retries, rollback methods, and timeout.
+ * @returns A method decorator function.
+ */
 export function Step(
   id: string,
-  options: { retries?: number; rollback?: string[]; timeout?: string } = {},
-) {
+  options: StepOptions = {},
+): (
+  _target: any,
+  _propertyKey: string,
+  descriptor: PropertyDescriptor,
+) =&gt; void {
   return function (
     _target: any,
     _propertyKey: string,
     descriptor: PropertyDescriptor,
-  ) {
+  ): void {
     const originalMethod = descriptor.value;
     descriptor.value = async function (...args: any[]) {
       const self = this as WorkflowBase;
@@ -867,7 +943,7 @@ export function Step(
     <div class="footer quiet pad2 space-top1 center small">
       Code coverage generated by
       <a href="https://deno.com/" target="_blank">Deno v2.6.5</a>
-      at Thu, 22 Jan 2026 01:18:56 +0000
+      at Fri, 23 Jan 2026 15:00:01 +0000
     </div>
   </body>
 </html>
