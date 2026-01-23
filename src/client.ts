@@ -1293,12 +1293,11 @@ export class RocketBaseClient {
 
         await self.workflow.queueMessage(`__wkf_workflow_${workflowName}`, {
           type: "workflow_start",
-
           runId: run.runId,
-
           workflowName,
-
           input,
+        }, {
+          runId: run.runId,
         });
 
         return run;
@@ -1313,12 +1312,11 @@ export class RocketBaseClient {
 
         await self.workflow.queueMessage(`__wkf_workflow_${run.workflowName}`, {
           type: "resume",
-
           runId: run.runId,
-
           workflowName: run.workflowName,
-
           input: run.input,
+        }, {
+          runId: run.runId,
         });
 
         return run;
@@ -1510,12 +1508,11 @@ export class RocketBaseClient {
 
         await self.workflow.queueMessage(`__wkf_workflow_${run.workflowName}`, {
           type: "signal",
-
           runId: runId,
-
           workflowName: run.workflowName,
-
           input: run.input,
+        }, {
+          runId: runId,
         });
 
         return true;

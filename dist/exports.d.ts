@@ -820,6 +820,7 @@ export declare class WorkflowBase {
     fn: (...args: any[]) => Promise<T>,
     args: any[],
     options?: StepOptions,
+    name?: string,
   ): Promise<T>;
 }
 /**

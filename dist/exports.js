@@ -584,7 +584,7 @@ var k = class {
       },
       trigger: async (r, t, o = {}) => {
         let c = { ...w.get(r)?.prototype?.workflowOptions || {}, ...o },
-          h = await e.workflow.createRun({
+          l = await e.workflow.createRun({
             deploymentId: c.deploymentId || "sdk",
             workflowName: r,
             input: t,
@@ -592,11 +592,11 @@ var k = class {
           });
         return await e.workflow.queueMessage(`__wkf_workflow_${r}`, {
           type: "workflow_start",
-          runId: h.runId,
+          runId: l.runId,
           workflowName: r,
           input: t,
-        }),
-          h;
+        }, { runId: l.runId }),
+          l;
       },
       resume: async (r) => {
         let t = await e.workflow.getRun(r);
@@ -608,6 +608,7 @@ var k = class {
             workflowName: t.workflowName,
             input: t.input,
           },
+          { runId: t.runId },
         ),
           t;
       },
@@ -690,6 +691,7 @@ var k = class {
             workflowName: i.workflowName,
             input: i.input,
           },
+          { runId: r },
         ),
           !0;
       },
@@ -775,7 +777,7 @@ var k = class {
       await fetch(`${this.baseUrl}/api/gates/${e}`, t);
   }
 };
-var l = class extends Error {
+var h = class extends Error {
   constructor(e = "Workflow suspended") {
     super(e), this.name = "WorkflowSuspension";
   }
@@ -820,7 +822,7 @@ var d = class {
         `[Workflow ${this.workflowName}] Sleep ${s} already emitted, suspending`,
       ),
         this.isSuspended = !0,
-        new l(`Sleeping for ${s}`);
+        new h(`Sleeping for ${s}`);
     }
     let r = 0;
     if (typeof e == "string") {
@@ -839,7 +841,7 @@ var d = class {
     }),
       this.emittedEvents.add(s),
       this.isSuspended = !0,
-      new l(`Sleeping for ${r}ms`);
+      new h(`Sleeping for ${r}ms`);
   }
   async waitForSignal(e) {
     let s = this.getSequentialId(`signal-${e}`);
@@ -873,7 +875,7 @@ var d = class {
           `[Workflow ${this.workflowName}] Signal ${s} already waiting, suspending`,
         ),
           this.isSuspended = !0,
-          new l(`Waiting for signal: ${e}`))
+          new h(`Waiting for signal: ${e}`))
         : (await this.client.workflow.createEvent(this.runId, {
           eventType: "signal_waiting",
           correlationId: s,
@@ -881,7 +883,7 @@ var d = class {
         }),
           this.emittedEvents.add(s),
           this.isSuspended = !0,
-          new l(`Waiting for signal: ${e}`))
+          new h(`Waiting for signal: ${e}`))
       : new Error("Cannot wait for signal outside of a workflow context.");
   }
   async runRollback(e) {
@@ -938,7 +940,7 @@ var d = class {
       }
     }
   }
-  async executeStep(e, s, r, t = {}) {
+  async executeStep(e, s, r, t = {}, o) {
     if (!this.runId) return s.apply(this, r);
     if (this.invokedSteps.has(e)) {
       throw new Error(
@@ -952,63 +954,63 @@ var d = class {
         this.history.get(e);
     }
     if (t.rollback) {
-      for (let i of t.rollback) {
-        let c = `${e}-rb-${i}`;
-        this.history.has(c) ||
+      for (let c of t.rollback) {
+        let l = `${e}-rb-${c}`;
+        this.history.has(l) ||
           (await this.client.workflow.createEvent(this.runId, {
             eventType: "rollback_registered",
-            correlationId: c,
-            payload: { method: i },
+            correlationId: l,
+            payload: { method: c },
           }),
-            this.rollbackStack.push(i));
+            this.rollbackStack.push(c));
       }
     }
-    let o = t.retries || 0, a = 0;
+    let a = t.retries || 0, i = 0;
     for (
       this.stepAttempts.has(e) || this.stepAttempts.set(e, 0),
-        a = this.stepAttempts.get(e);;
+        i = this.stepAttempts.get(e);;
     ) {
       try {
         this.emittedEvents.has(e) ||
           (console.log(
-            `[Workflow ${this.workflowName}] Step ${e} starting (Attempt ${a})`,
+            `[Workflow ${this.workflowName}] Step ${e} starting (Attempt ${i})`,
           ),
             await this.client.workflow.createEvent(this.runId, {
               eventType: "step_started",
               correlationId: e,
-              payload: { attempt: a },
+              payload: { attempt: i, name: o || e },
             }),
             this.emittedEvents.add(e));
-        let i = await s.apply(this, r);
+        let c = await s.apply(this, r);
         return console.log(
           `[Workflow ${this.workflowName}] Step ${e} completed`,
         ),
           await this.client.workflow.createEvent(this.runId, {
             eventType: "step_completed",
             correlationId: e,
-            payload: { output: i },
+            payload: { output: c },
           }),
           this.completedSteps.add(e),
-          this.history.set(e, i),
-          i;
-      } catch (i) {
-        if (a < o) {
-          a++,
-            this.stepAttempts.set(e, a),
+          this.history.set(e, c),
+          c;
+      } catch (c) {
+        if (i < a) {
+          i++,
+            this.stepAttempts.set(e, i),
             await this.client.workflow.createEvent(this.runId, {
               eventType: "step_retrying",
               correlationId: e,
-              payload: { error: i.message, attempt: a },
+              payload: { error: c.message, attempt: i },
             }),
-            await new Promise((c) => setTimeout(c, 1e3 * a));
+            await new Promise((l) => setTimeout(l, 1e3 * i));
           continue;
         }
         throw await this.client.workflow.createEvent(this.runId, {
           eventType: "step_failed",
           correlationId: e,
-          payload: { error: i.message, attempt: a },
+          payload: { error: c.message, attempt: i },
         }),
-          i;
+          c;
       }
     }
   }
@@ -1034,7 +1036,7 @@ function U(n, e = {}) {
           }),
           a;
       } catch (a) {
-        if (a instanceof l) return;
+        if (a instanceof h) return;
         console.error(`[Workflow ${n}] Failed:`, a.message);
         try {
           await o.runRollback(a);
@@ -1151,8 +1153,8 @@ var g = class {
           await this.client.workflow.nack(e.id);
         return;
       }
-      let h = new c(this.client);
-      h.runId = r, h.rebuildState(i);
+      let l = new c(this.client);
+      l.runId = r, l.rebuildState(i);
       let S = a.executionTimeout || 3e4,
         f,
         b = new Promise((E, $) => {
@@ -1162,17 +1164,17 @@ var g = class {
           );
         });
       try {
-        await Promise.race([h.run(...t || []), b]);
+        await Promise.race([l.run(...t || []), b]);
       } finally {
         f && clearTimeout(f);
       }
       clearInterval(o),
         await this.client.workflow.ack(e.id),
-        h.isSuspended
+        l.isSuspended
           ? console.log(`[Worker ${s}] Job ${e.id} suspended`)
           : console.log(`[Worker ${s}] Job ${e.id} completed`);
     } catch (a) {
-      if (clearInterval(o), a instanceof l) {
+      if (clearInterval(o), a instanceof h) {
         await this.client.workflow.ack(e.id),
           console.log(`[Worker ${s}] Job ${e.id} suspended`);
         return;
@@ -1268,7 +1270,7 @@ function K(n, e = {}) {
             }),
             i;
         } catch (i) {
-          if (i instanceof l) return;
+          if (i instanceof h) return;
           console.error(`[Workflow ${n}] Failed:`, i.message);
           try {
             await a.runRollback(i);
@@ -1294,8 +1296,8 @@ function H(n, e, s) {
     async function (...a) {
       let i = this instanceof d ? this : p.getStore();
       if (!i) return await t(...a);
-      let c = t.name || "step", h = r || i.getSequentialId(c);
-      return i.executeStep(h, t.bind(i), a, o);
+      let c = r || i.getSequentialId("step");
+      return i.executeStep(c, t.bind(i), a, o, t.name);
     };
 }
 export {

@@ -280,6 +280,7 @@ export class WorkflowBase {
     fn: (...args: any[]) => Promise<T>,
     args: any[],
     options: StepOptions = {},
+    name?: string,
   ): Promise<T> {
     if (!this.runId) return fn.apply(this, args);
 
@@ -329,7 +330,7 @@ export class WorkflowBase {
           await this.client.workflow.createEvent(this.runId, {
             eventType: "step_started",
             correlationId: id,
-            payload: { attempt },
+            payload: { attempt, name: name || id },
           });
           this.emittedEvents.add(id);
         }

@@ -139,11 +139,17 @@ export function step<T extends (...args: any[]) => Promise<any>>(
     }
 
     // Generate ID if missing using the context's deterministic counter
-    // Use function name as prefix if available to make it less brittle than just "step"
-    const prefix = fn.name || "step";
-    const effectiveId = id || context.getSequentialId(prefix);
+    // Use 'step' as prefix to ensure stability across different environments/transpilations
+    const effectiveId = id || context.getSequentialId("step");
 
     // We bind the function to the context so 'this' works inside the step implementation
-    return context.executeStep(effectiveId, fn.bind(context), args, opts);
+    // Pass original fn.name for better observability in logs
+    return context.executeStep(
+      effectiveId,
+      fn.bind(context),
+      args,
+      opts,
+      fn.name,
+    );
   } as unknown) as T;
 }
