@@ -584,7 +584,7 @@ var k = class {
       },
       trigger: async (r, t, o = {}) => {
         let c = { ...w.get(r)?.prototype?.workflowOptions || {}, ...o },
-          l = await e.workflow.createRun({
+          h = await e.workflow.createRun({
             deploymentId: c.deploymentId || "sdk",
             workflowName: r,
             input: t,
@@ -592,11 +592,11 @@ var k = class {
           });
         return await e.workflow.queueMessage(`__wkf_workflow_${r}`, {
           type: "workflow_start",
-          runId: l.runId,
+          runId: h.runId,
           workflowName: r,
           input: t,
-        }, { runId: l.runId }),
-          l;
+        }, { runId: h.runId }),
+          h;
       },
       resume: async (r) => {
         let t = await e.workflow.getRun(r);
@@ -777,7 +777,7 @@ var k = class {
       await fetch(`${this.baseUrl}/api/gates/${e}`, t);
   }
 };
-var h = class extends Error {
+var l = class extends Error {
   constructor(e = "Workflow suspended") {
     super(e), this.name = "WorkflowSuspension";
   }
@@ -801,7 +801,17 @@ var d = class {
     e && (this.client = e);
   }
   async parallel(e) {
-    return await Promise.all(e.map((s) => s()));
+    let s = e.map((a) => a()),
+      r = await Promise.allSettled(s),
+      t = null,
+      o = null;
+    for (let a of r) {
+      a.status === "rejected" &&
+        (a.reason instanceof l ? o || (o = a.reason) : t || (t = a.reason));
+    }
+    if (t) throw t;
+    if (o) throw this.isSuspended = !0, o;
+    return r.map((a) => a.value);
   }
   getSequentialId(e) {
     return `${e}-${this.callCounter++}`;
@@ -822,7 +832,7 @@ var d = class {
         `[Workflow ${this.workflowName}] Sleep ${s} already emitted, suspending`,
       ),
         this.isSuspended = !0,
-        new h(`Sleeping for ${s}`);
+        new l(`Sleeping for ${s}`);
     }
     let r = 0;
     if (typeof e == "string") {
@@ -841,7 +851,7 @@ var d = class {
     }),
       this.emittedEvents.add(s),
       this.isSuspended = !0,
-      new h(`Sleeping for ${r}ms`);
+      new l(`Sleeping for ${r}ms`);
   }
   async waitForSignal(e) {
     let s = this.getSequentialId(`signal-${e}`);
@@ -866,6 +876,7 @@ var d = class {
           `[Workflow ${this.workflowName}] Signal ${s} pulled from signal queue at cursor ${t}`,
         ),
           this.signalCursors.set(e, t + 1),
+          this.history.set(s, o),
           o;
       }
     }
@@ -875,7 +886,7 @@ var d = class {
           `[Workflow ${this.workflowName}] Signal ${s} already waiting, suspending`,
         ),
           this.isSuspended = !0,
-          new h(`Waiting for signal: ${e}`))
+          new l(`Waiting for signal: ${e}`))
         : (await this.client.workflow.createEvent(this.runId, {
           eventType: "signal_waiting",
           correlationId: s,
@@ -883,7 +894,7 @@ var d = class {
         }),
           this.emittedEvents.add(s),
           this.isSuspended = !0,
-          new h(`Waiting for signal: ${e}`))
+          new l(`Waiting for signal: ${e}`))
       : new Error("Cannot wait for signal outside of a workflow context.");
   }
   async runRollback(e) {
@@ -955,11 +966,11 @@ var d = class {
     }
     if (t.rollback) {
       for (let c of t.rollback) {
-        let l = `${e}-rb-${c}`;
-        this.history.has(l) ||
+        let h = `${e}-rb-${c}`;
+        this.history.has(h) ||
           (await this.client.workflow.createEvent(this.runId, {
             eventType: "rollback_registered",
-            correlationId: l,
+            correlationId: h,
             payload: { method: c },
           }),
             this.rollbackStack.push(c));
@@ -1002,7 +1013,7 @@ var d = class {
               correlationId: e,
               payload: { error: c.message, attempt: i },
             }),
-            await new Promise((l) => setTimeout(l, 1e3 * i));
+            await new Promise((h) => setTimeout(h, 1e3 * i));
           continue;
         }
         throw await this.client.workflow.createEvent(this.runId, {
@@ -1036,7 +1047,7 @@ function U(n, e = {}) {
           }),
           a;
       } catch (a) {
-        if (a instanceof h) return;
+        if (a instanceof l) return;
         console.error(`[Workflow ${n}] Failed:`, a.message);
         try {
           await o.runRollback(a);
@@ -1060,7 +1071,7 @@ function R(n, e = {}) {
     };
   };
 }
-var g = class {
+var m = class {
   client;
   active;
   workflowNames;
@@ -1153,8 +1164,8 @@ var g = class {
           await this.client.workflow.nack(e.id);
         return;
       }
-      let l = new c(this.client);
-      l.runId = r, l.rebuildState(i);
+      let h = new c(this.client);
+      h.runId = r, h.rebuildState(i);
       let S = a.executionTimeout || 3e4,
         f,
         b = new Promise((E, $) => {
@@ -1164,17 +1175,17 @@ var g = class {
           );
         });
       try {
-        await Promise.race([l.run(...t || []), b]);
+        await Promise.race([h.run(...t || []), b]);
       } finally {
         f && clearTimeout(f);
       }
       clearInterval(o),
         await this.client.workflow.ack(e.id),
-        l.isSuspended
+        h.isSuspended
           ? console.log(`[Worker ${s}] Job ${e.id} suspended`)
           : console.log(`[Worker ${s}] Job ${e.id} completed`);
     } catch (a) {
-      if (clearInterval(o), a instanceof h) {
+      if (clearInterval(o), a instanceof l) {
         await this.client.workflow.ack(e.id),
           console.log(`[Worker ${s}] Job ${e.id} suspended`);
         return;
@@ -1197,7 +1208,7 @@ var g = class {
     }
   }
 };
-var m = class extends Error {
+var g = class extends Error {
   constructor(e = "Rollback stopped") {
     super(e), this.name = "StopRollback";
   }
@@ -1270,7 +1281,7 @@ function K(n, e = {}) {
             }),
             i;
         } catch (i) {
-          if (i instanceof h) return;
+          if (i instanceof l) return;
           console.error(`[Workflow ${n}] Failed:`, i.message);
           try {
             await a.runRollback(i);
@@ -1302,11 +1313,11 @@ function H(n, e, s) {
 }
 export {
   d as WorkflowBase,
-  g as WorkflowWorker,
+  g as StopRollback,
   H as step,
   K as workflow,
   k as RocketBaseClient,
-  m as StopRollback,
+  m as WorkflowWorker,
   R as Step,
   U as Workflow,
   w as WorkflowRegistry,

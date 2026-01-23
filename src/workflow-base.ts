@@ -56,7 +56,29 @@ export class WorkflowBase {
    * @returns An array of results from the executed steps.
    */
   async parallel<T>(steps: (() => Promise<T>)[]): Promise<T[]> {
-    return await Promise.all(steps.map((s) => s()));
+    const promises = steps.map((s) => s());
+    const results = await Promise.allSettled(promises);
+
+    let firstError: any = null;
+    let suspension: WorkflowSuspension | null = null;
+
+    for (const res of results) {
+      if (res.status === "rejected") {
+        if (res.reason instanceof WorkflowSuspension) {
+          if (!suspension) suspension = res.reason;
+        } else if (!firstError) {
+          firstError = res.reason;
+        }
+      }
+    }
+
+    if (firstError) throw firstError;
+    if (suspension) {
+      this.isSuspended = true;
+      throw suspension;
+    }
+
+    return results.map((res) => (res as PromiseFulfilledResult<T>).value);
   }
 
   /**
@@ -163,6 +185,9 @@ export class WorkflowBase {
           `[Workflow ${this.workflowName}] Signal ${id} pulled from signal queue at cursor ${cursor}`,
         );
         this.signalCursors.set(name, cursor + 1);
+        // If we found it in queue but it wasn't in history with this ID,
+        // we should record it in history now to stabilize it for next replay
+        this.history.set(id, data);
         return data as T;
       }
     }
