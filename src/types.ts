@@ -71,7 +71,7 @@ export interface WorkflowContext {
 /**
  * Generic type for record data.
  */
-export type RecordData = Record<string, unknown>;
+export type RecordData = Record<"id", string> & Record<string, unknown>;
 
 /**
  * Represents a paginated list of items.
@@ -176,6 +176,12 @@ export interface ViewConfig {
   sql: string;
 }
 
+export interface RetentionConfig {
+  enabled: boolean;
+  days: number;
+  query: string;
+}
+
 /**
  * Configuration for a collection.
  */
@@ -216,6 +222,9 @@ export interface CollectionConfig {
   tags?: string | null;
   /** Additional collection-specific options. */
   options?: Record<string, unknown>;
+
+  // Retention Config
+  retention?: RetentionConfig;
 }
 
 /**
@@ -445,10 +454,12 @@ export interface WorkflowOptions {
  * Options for a single workflow step.
  */
 export interface StepOptions {
-  /** Number of retry attempts if the step fails. */
+  /** Number of retry attempts if step fails. */
   retries?: number;
-  /** List of methods to call for rollback if the workflow fails. */
+  /** List of method names to call for rollback if workflow fails (decorator style). */
   rollback?: string[];
-  /** Timeout for the step (not currently implemented in worker). */
+  /** Rollback function to call directly if step fails (functional style). */
+  rollbackFn?: (error: unknown, accumulator: any) => Promise<any> | any;
+  /** Timeout for step (not currently implemented in worker). */
   timeout?: string;
 }

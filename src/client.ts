@@ -50,7 +50,7 @@ export class RocketBaseClient {
   constructor(baseUrl: string = "http://127.0.0.1:3000") {
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("pb_auth_token");
+      this.token = localStorage.getItem("rb_auth_token");
       this.apiKey = localStorage.getItem("rb_api_key");
     }
   }
@@ -72,9 +72,9 @@ export class RocketBaseClient {
     this.token = token;
     if (typeof window !== "undefined") {
       if (token) {
-        localStorage.setItem("pb_auth_token", token);
+        localStorage.setItem("rb_auth_token", token);
       } else {
-        localStorage.removeItem("pb_auth_token");
+        localStorage.removeItem("rb_auth_token");
       }
     }
     if (this.realtimeSocket) {
@@ -1205,6 +1205,10 @@ export class RocketBaseClient {
       runId: string,
       data: Partial<WorkflowRun>,
     ) => Promise<WorkflowRun>;
+    cancelRun: (
+      runId: string,
+      reason?: string,
+    ) => Promise<unknown>;
     listRuns: (params?: {
       workflowName?: string;
       status?: string;
@@ -1238,7 +1242,14 @@ export class RocketBaseClient {
     nack: (messageId: string) => Promise<unknown>;
     touch: (messageId: string) => Promise<unknown>;
     hooks: {
-      create: (runId: string, data: any) => Promise<unknown>;
+      create: (data: {
+        runId?: string;
+        workflowName?: string;
+        signalName?: string;
+        token: string;
+        metadata?: any;
+      }) => Promise<unknown>;
+      execute: (token: string, payload: any) => Promise<unknown>;
       get: (id: string) => Promise<unknown>;
       getByToken: (token: string) => Promise<unknown>;
       list: (runId: string) => Promise<unknown>;
@@ -1298,6 +1309,7 @@ export class RocketBaseClient {
           input,
         }, {
           runId: run.runId,
+          idempotencyKey: run.runId,
         });
 
         return run;
@@ -1317,6 +1329,7 @@ export class RocketBaseClient {
           input: run.input,
         }, {
           runId: run.runId,
+          idempotencyKey: run.runId,
         });
 
         return run;
@@ -1348,6 +1361,26 @@ export class RocketBaseClient {
           headers: self.headers,
 
           body: JSON.stringify(data),
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        return res.json();
+      },
+
+      /**
+       * Cancels a running or pending workflow run.
+       * @param runId - The run ID to cancel.
+       * @param reason - Optional reason for cancellation.
+       */
+      cancelRun: async (
+        runId: string,
+        reason?: string,
+      ): Promise<unknown> => {
+        const res = await fetch(`${base}/runs/${runId}`, {
+          method: "DELETE",
+          headers: self.headers,
+          body: JSON.stringify({ reason }),
         });
 
         if (!res.ok) throw new Error(await res.text());
@@ -1491,18 +1524,14 @@ export class RocketBaseClient {
         data: any,
         correlationId?: string,
       ): Promise<boolean> => {
-        // 1. Create signal event
+        const signalCorrelationId = correlationId ||
+          `signal-${signalName}-${crypto.randomUUID()}`;
 
         await self.workflow.createEvent(runId, {
           eventType: "signal_received",
-
-          correlationId: correlationId ||
-            `signal-${signalName}-${crypto.randomUUID()}`, // Deterministic ID for the signal
-
+          correlationId: signalCorrelationId,
           payload: { name: signalName, data },
         });
-
-        // 2. Queue workflow for execution
 
         const run = await self.workflow.getRun(runId);
 
@@ -1513,6 +1542,7 @@ export class RocketBaseClient {
           input: run.input,
         }, {
           runId: runId,
+          idempotencyKey: `${runId}-${signalCorrelationId}`,
         });
 
         return true;
@@ -1595,15 +1625,38 @@ export class RocketBaseClient {
        */
       hooks: {
         /**
-         * Creates a new hook for a workflow run.
+         * Creates a new hook for a workflow run or workflow type.
          */
-        create: async (runId: string, data: any): Promise<unknown> => {
+        create: async (data: {
+          runId?: string;
+          workflowName?: string;
+          signalName?: string;
+          token: string;
+          metadata?: any;
+        }): Promise<unknown> => {
           const res = await fetch(`${base}/hooks`, {
             method: "POST",
 
             headers: self.headers,
 
-            body: JSON.stringify({ runId, ...data }),
+            body: JSON.stringify(data),
+          });
+
+          if (!res.ok) throw new Error(await res.text());
+
+          return res.json();
+        },
+
+        /**
+         * Executes a hook by token.
+         */
+        execute: async (token: string, payload: any): Promise<unknown> => {
+          const res = await fetch(`${base}/hooks/${token}`, {
+            method: "POST",
+
+            headers: self.headers,
+
+            body: JSON.stringify(payload),
           });
 
           if (!res.ok) throw new Error(await res.text());

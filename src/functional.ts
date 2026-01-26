@@ -11,7 +11,7 @@ import type { StepOptions, WorkflowContext, WorkflowOptions } from "./types.ts";
  * Defines a functional workflow.
  * @param name - The unique name of the workflow.
  * @param options - Configuration options for the workflow.
- * @returns An object with a `run` method to define the workflow logic.
+ * @returns An object with a `run` method to define workflow logic.
  */
 export function workflow(
   name: string,
@@ -51,7 +51,7 @@ export function workflow(
       // Register context-aware wrapper similar to @Workflow decorator
       WorkflowRegistry.set(name, FunctionalWorkflow);
 
-      // Monkey-patch prototype run to add the standard lifecycle logic
+      // Monkey-patch prototype run to add standard lifecycle logic
       // (trigger check, status updates, rollback)
       // This duplicates logic from @Workflow decorator. Ideally we extract it.
       // But for now, let's implement it here.
@@ -104,7 +104,7 @@ export function workflow(
 /**
  * Defines a step within a functional workflow.
  * Can be used to wrap a function or define a block of code as a step.
- * @param idOrFn - The step ID (string) or the function to wrap.
+ * @param idOrFn - The step ID (string) or function to wrap.
  * @param fnOrOptions - The function (if ID was first) or options (if function was first).
  * @param options - Options for retries, rollback, etc. (if ID was first).
  * @returns A wrapped function that executes as a workflow step.
@@ -128,6 +128,11 @@ export function step<T extends (...args: any[]) => Promise<any>>(
     opts = (fnOrOptions as StepOptions) || {};
   }
 
+  // Merge rollbackFn from options for functional style
+  if (options && options.rollbackFn) {
+    opts.rollbackFn = options.rollbackFn;
+  }
+
   return (async function (this: WorkflowContext | void, ...args: any[]) {
     const context = (this instanceof WorkflowBase)
       ? this as unknown as WorkflowBase
@@ -142,7 +147,7 @@ export function step<T extends (...args: any[]) => Promise<any>>(
     // Use 'step' as prefix to ensure stability across different environments/transpilations
     const effectiveId = id || context.getSequentialId("step");
 
-    // We bind the function to the context so 'this' works inside the step implementation
+    // We bind the function to context so 'this' works inside the step implementation
     // Pass original fn.name for better observability in logs
     return context.executeStep(
       effectiveId,

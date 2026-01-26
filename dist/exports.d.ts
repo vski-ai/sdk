@@ -69,7 +69,7 @@ export interface WorkflowContext {
 /**
  * Generic type for record data.
  */
-export type RecordData = Record<string, unknown>;
+export type RecordData = Record<"id", string> & Record<string, unknown>;
 /**
  * Represents a paginated list of items.
  */
@@ -167,6 +167,11 @@ export interface ViewConfig {
   /** The SQL query defining the view. */
   sql: string;
 }
+export interface RetentionConfig {
+  enabled: boolean;
+  days: number;
+  query: string;
+}
 /**
  * Configuration for a collection.
  */
@@ -207,6 +212,7 @@ export interface CollectionConfig {
   tags?: string | null;
   /** Additional collection-specific options. */
   options?: Record<string, unknown>;
+  retention?: RetentionConfig;
 }
 /**
  * Details about available authentication methods.
@@ -424,11 +430,13 @@ export interface WorkflowOptions {
  * Options for a single workflow step.
  */
 export interface StepOptions {
-  /** Number of retry attempts if the step fails. */
+  /** Number of retry attempts if step fails. */
   retries?: number;
-  /** List of methods to call for rollback if the workflow fails. */
+  /** List of method names to call for rollback if workflow fails (decorator style). */
   rollback?: string[];
-  /** Timeout for the step (not currently implemented in worker). */
+  /** Rollback function to call directly if step fails (functional style). */
+  rollbackFn?: (error: unknown, accumulator: any) => Promise<any> | any;
+  /** Timeout for step (not currently implemented in worker). */
   timeout?: string;
 }
 /**
@@ -674,6 +682,7 @@ export declare class RocketBaseClient {
       runId: string,
       data: Partial<WorkflowRun>,
     ) => Promise<WorkflowRun>;
+    cancelRun: (runId: string, reason?: string) => Promise<unknown>;
     listRuns: (params?: {
       workflowName?: string;
       status?: string;
@@ -704,7 +713,14 @@ export declare class RocketBaseClient {
     nack: (messageId: string) => Promise<unknown>;
     touch: (messageId: string) => Promise<unknown>;
     hooks: {
-      create: (runId: string, data: any) => Promise<unknown>;
+      create: (data: {
+        runId?: string;
+        workflowName?: string;
+        signalName?: string;
+        token: string;
+        metadata?: any;
+      }) => Promise<unknown>;
+      execute: (token: string, payload: any) => Promise<unknown>;
       get: (id: string) => Promise<unknown>;
       getByToken: (token: string) => Promise<unknown>;
       list: (runId: string) => Promise<unknown>;
@@ -904,7 +920,7 @@ export declare class StopRollback extends Error {
  * Defines a functional workflow.
  * @param name - The unique name of the workflow.
  * @param options - Configuration options for the workflow.
- * @returns An object with a `run` method to define the workflow logic.
+ * @returns An object with a `run` method to define workflow logic.
  */
 export declare function workflow(name: string, options?: WorkflowOptions): {
   run: (
@@ -914,7 +930,7 @@ export declare function workflow(name: string, options?: WorkflowOptions): {
 /**
  * Defines a step within a functional workflow.
  * Can be used to wrap a function or define a block of code as a step.
- * @param idOrFn - The step ID (string) or the function to wrap.
+ * @param idOrFn - The step ID (string) or function to wrap.
  * @param fnOrOptions - The function (if ID was first) or options (if function was first).
  * @param options - Options for retries, rollback, etc. (if ID was first).
  * @returns A wrapped function that executes as a workflow step.

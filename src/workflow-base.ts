@@ -225,15 +225,28 @@ export class WorkflowBase {
     const accumulator: Record<string, unknown> = {};
     const stack = [...this.rollbackStack];
     while (stack.length > 0) {
-      const method = stack.pop()!;
-      if (typeof (this as Record<string, unknown>)[method] === "function") {
+      const rollbackId = stack.pop()!;
+      const rollbackFn = this.history.get(rollbackId);
+
+      if (typeof rollbackFn === "function") {
         try {
-          const result = await (this as unknown as Record<string, Function>)
-            [method](error, accumulator);
-          accumulator[method] = result;
+          const result = await rollbackFn(error, accumulator);
+          accumulator[rollbackId] = result;
         } catch (e) {
           if (e.name === "StopRollback") break;
-          console.error(`Rollback method ${method} failed:`, e.message);
+          console.error(`Rollback function ${rollbackId} failed:`, e.message);
+        }
+      } else {
+        const method = rollbackId as string;
+        if (typeof (this as Record<string, unknown>)[method] === "function") {
+          try {
+            const result = await (this as unknown as Record<string, Function>)
+              [method](error, accumulator);
+            accumulator[method] = result;
+          } catch (e) {
+            if (e.name === "StopRollback") break;
+            console.error(`Rollback method ${method} failed:`, e.message);
+          }
         }
       }
     }
@@ -256,6 +269,8 @@ export class WorkflowBase {
     this.callCounter = 0;
     this.isSuspended = false;
 
+    const signalCounters = new Map<string, number>();
+
     for (const event of events) {
       const payload = event.payload || {};
       if (event.correlationId) {
@@ -270,13 +285,17 @@ export class WorkflowBase {
           this.completedSteps.add(event.correlationId!);
           break;
         case "signal_received":
-          this.history.set(event.correlationId!, payload.data);
           if (payload.name) {
             const name = payload.name as string;
             if (!this.signalQueues.has(name)) {
               this.signalQueues.set(name, []);
             }
             this.signalQueues.get(name)!.push(payload.data);
+
+            const counter = signalCounters.get(name) || 0;
+            const signalId = `signal-${name}-${counter}`;
+            this.history.set(signalId, payload.data);
+            signalCounters.set(name, counter + 1);
           }
           break;
         case "rollback_registered":
@@ -314,7 +333,6 @@ export class WorkflowBase {
         `Duplicate step ID detected: "${id}". Each step within a workflow must have a unique ID.`,
       );
     }
-    this.invokedSteps.add(id);
 
     if (this.completedSteps.has(id)) {
       console.log(
@@ -334,6 +352,19 @@ export class WorkflowBase {
           });
           this.rollbackStack.push(method);
         }
+      }
+    }
+
+    if (options.rollbackFn) {
+      const rollbackFnId = `${id}-rbfn`;
+      if (!this.history.has(rollbackFnId)) {
+        await this.client.workflow.createEvent(this.runId, {
+          eventType: "rollback_registered",
+          correlationId: rollbackFnId,
+          payload: { isFunction: true },
+        });
+        this.rollbackStack.push(rollbackFnId);
+        this.history.set(rollbackFnId, options.rollbackFn);
       }
     }
 

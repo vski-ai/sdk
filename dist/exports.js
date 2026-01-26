@@ -12,7 +12,7 @@ var k = class {
   constructor(e = "http://127.0.0.1:3000") {
     this.baseUrl = e.endsWith("/") ? e.slice(0, -1) : e,
       typeof window < "u" &&
-      (this.token = localStorage.getItem("pb_auth_token"),
+      (this.token = localStorage.getItem("rb_auth_token"),
         this.apiKey = localStorage.getItem("rb_api_key"));
   }
   getToken() {
@@ -22,8 +22,8 @@ var k = class {
     this.token = e,
       typeof window < "u" &&
       (e
-        ? localStorage.setItem("pb_auth_token", e)
-        : localStorage.removeItem("pb_auth_token")),
+        ? localStorage.setItem("rb_auth_token", e)
+        : localStorage.removeItem("rb_auth_token")),
       this.realtimeSocket && this.realtimeSocket.close();
   }
   setApiKey(e) {
@@ -105,8 +105,8 @@ var k = class {
             let a = this.workflowSubscriptions.get(o);
             if (a && a.size > 0) {
               let i = Array.from(a),
-                c = i[Math.floor(Math.random() * i.length)];
-              c(t.data);
+                n = i[Math.floor(Math.random() * i.length)];
+              n(t.data);
             }
           }
         } catch (t) {
@@ -583,20 +583,20 @@ var k = class {
         return t.json();
       },
       trigger: async (r, t, o = {}) => {
-        let c = { ...w.get(r)?.prototype?.workflowOptions || {}, ...o },
-          h = await e.workflow.createRun({
-            deploymentId: c.deploymentId || "sdk",
+        let n = { ...w.get(r)?.prototype?.workflowOptions || {}, ...o },
+          l = await e.workflow.createRun({
+            deploymentId: n.deploymentId || "sdk",
             workflowName: r,
             input: t,
-            ...c,
+            ...n,
           });
         return await e.workflow.queueMessage(`__wkf_workflow_${r}`, {
           type: "workflow_start",
-          runId: h.runId,
+          runId: l.runId,
           workflowName: r,
           input: t,
-        }, { runId: h.runId }),
-          h;
+        }, { runId: l.runId, idempotencyKey: l.runId }),
+          l;
       },
       resume: async (r) => {
         let t = await e.workflow.getRun(r);
@@ -608,7 +608,7 @@ var k = class {
             workflowName: t.workflowName,
             input: t.input,
           },
-          { runId: t.runId },
+          { runId: t.runId, idempotencyKey: t.runId },
         ),
           t;
       },
@@ -622,6 +622,15 @@ var k = class {
           method: "PATCH",
           headers: e.headers,
           body: JSON.stringify(t),
+        });
+        if (!o.ok) throw new Error(await o.text());
+        return o.json();
+      },
+      cancelRun: async (r, t) => {
+        let o = await fetch(`${s}/runs/${r}`, {
+          method: "DELETE",
+          headers: e.headers,
+          body: JSON.stringify({ reason: t }),
         });
         if (!o.ok) throw new Error(await o.text());
         return o.json();
@@ -677,21 +686,22 @@ var k = class {
         return o ? JSON.parse(o) : null;
       },
       sendSignal: async (r, t, o, a) => {
+        let i = a || `signal-${t}-${crypto.randomUUID()}`;
         await e.workflow.createEvent(r, {
           eventType: "signal_received",
-          correlationId: a || `signal-${t}-${crypto.randomUUID()}`,
+          correlationId: i,
           payload: { name: t, data: o },
         });
-        let i = await e.workflow.getRun(r);
+        let n = await e.workflow.getRun(r);
         return await e.workflow.queueMessage(
-          `__wkf_workflow_${i.workflowName}`,
+          `__wkf_workflow_${n.workflowName}`,
           {
             type: "signal",
             runId: r,
-            workflowName: i.workflowName,
-            input: i.input,
+            workflowName: n.workflowName,
+            input: n.input,
           },
-          { runId: r },
+          { runId: r, idempotencyKey: `${r}-${i}` },
         ),
           !0;
       },
@@ -732,11 +742,20 @@ var k = class {
         return t.json();
       },
       hooks: {
-        create: async (r, t) => {
-          let o = await fetch(`${s}/hooks`, {
+        create: async (r) => {
+          let t = await fetch(`${s}/hooks`, {
             method: "POST",
             headers: e.headers,
-            body: JSON.stringify({ runId: r, ...t }),
+            body: JSON.stringify(r),
+          });
+          if (!t.ok) throw new Error(await t.text());
+          return t.json();
+        },
+        execute: async (r, t) => {
+          let o = await fetch(`${s}/hooks/${r}`, {
+            method: "POST",
+            headers: e.headers,
+            body: JSON.stringify(t),
           });
           if (!o.ok) throw new Error(await o.text());
           return o.json();
@@ -777,7 +796,7 @@ var k = class {
       await fetch(`${this.baseUrl}/api/gates/${e}`, t);
   }
 };
-var l = class extends Error {
+var h = class extends Error {
   constructor(e = "Workflow suspended") {
     super(e), this.name = "WorkflowSuspension";
   }
@@ -807,7 +826,7 @@ var d = class {
       o = null;
     for (let a of r) {
       a.status === "rejected" &&
-        (a.reason instanceof l ? o || (o = a.reason) : t || (t = a.reason));
+        (a.reason instanceof h ? o || (o = a.reason) : t || (t = a.reason));
     }
     if (t) throw t;
     if (o) throw this.isSuspended = !0, o;
@@ -832,7 +851,7 @@ var d = class {
         `[Workflow ${this.workflowName}] Sleep ${s} already emitted, suspending`,
       ),
         this.isSuspended = !0,
-        new l(`Sleeping for ${s}`);
+        new h(`Sleeping for ${s}`);
     }
     let r = 0;
     if (typeof e == "string") {
@@ -851,7 +870,7 @@ var d = class {
     }),
       this.emittedEvents.add(s),
       this.isSuspended = !0,
-      new l(`Sleeping for ${r}ms`);
+      new h(`Sleeping for ${r}ms`);
   }
   async waitForSignal(e) {
     let s = this.getSequentialId(`signal-${e}`);
@@ -886,7 +905,7 @@ var d = class {
           `[Workflow ${this.workflowName}] Signal ${s} already waiting, suspending`,
         ),
           this.isSuspended = !0,
-          new l(`Waiting for signal: ${e}`))
+          new h(`Waiting for signal: ${e}`))
         : (await this.client.workflow.createEvent(this.runId, {
           eventType: "signal_waiting",
           correlationId: s,
@@ -894,20 +913,31 @@ var d = class {
         }),
           this.emittedEvents.add(s),
           this.isSuspended = !0,
-          new l(`Waiting for signal: ${e}`))
+          new h(`Waiting for signal: ${e}`))
       : new Error("Cannot wait for signal outside of a workflow context.");
   }
   async runRollback(e) {
     let s = {}, r = [...this.rollbackStack];
     for (; r.length > 0;) {
-      let t = r.pop();
-      if (typeof this[t] == "function") {
+      let t = r.pop(), o = this.history.get(t);
+      if (typeof o == "function") {
         try {
-          let o = await this[t](e, s);
-          s[t] = o;
-        } catch (o) {
-          if (o.name === "StopRollback") break;
-          console.error(`Rollback method ${t} failed:`, o.message);
+          let a = await o(e, s);
+          s[t] = a;
+        } catch (a) {
+          if (a.name === "StopRollback") break;
+          console.error(`Rollback function ${t} failed:`, a.message);
+        }
+      } else {
+        let a = t;
+        if (typeof this[a] == "function") {
+          try {
+            let i = await this[a](e, s);
+            s[a] = i;
+          } catch (i) {
+            if (i.name === "StopRollback") break;
+            console.error(`Rollback method ${a} failed:`, i.message);
+          }
         }
       }
     }
@@ -923,30 +953,33 @@ var d = class {
       this.signalCursors.clear(),
       this.callCounter = 0,
       this.isSuspended = !1;
-    for (let s of e) {
-      let r = s.payload || {};
+    let s = new Map();
+    for (let r of e) {
+      let t = r.payload || {};
       switch (
-        s.correlationId && this.emittedEvents.add(s.correlationId), s.eventType
+        r.correlationId && this.emittedEvents.add(r.correlationId), r.eventType
       ) {
         case "step_completed":
-          this.completedSteps.add(s.correlationId),
-            this.history.set(s.correlationId, r.output);
+          this.completedSteps.add(r.correlationId),
+            this.history.set(r.correlationId, t.output);
           break;
         case "wait_completed":
-          this.completedSteps.add(s.correlationId);
+          this.completedSteps.add(r.correlationId);
           break;
         case "signal_received":
-          if (this.history.set(s.correlationId, r.data), r.name) {
-            let t = r.name;
-            this.signalQueues.has(t) || this.signalQueues.set(t, []),
-              this.signalQueues.get(t).push(r.data);
+          if (t.name) {
+            let o = t.name;
+            this.signalQueues.has(o) || this.signalQueues.set(o, []),
+              this.signalQueues.get(o).push(t.data);
+            let a = s.get(o) || 0, i = `signal-${o}-${a}`;
+            this.history.set(i, t.data), s.set(o, a + 1);
           }
           break;
         case "rollback_registered":
-          this.rollbackStack.push(r.method);
+          this.rollbackStack.push(t.method);
           break;
         case "step_retrying":
-          this.stepAttempts.set(s.correlationId, r.attempt);
+          this.stepAttempts.set(r.correlationId, t.attempt);
           break;
       }
     }
@@ -958,23 +991,34 @@ var d = class {
         `Duplicate step ID detected: "${e}". Each step within a workflow must have a unique ID.`,
       );
     }
-    if (this.invokedSteps.add(e), this.completedSteps.has(e)) {
+    if (this.completedSteps.has(e)) {
       return console.log(
         `[Workflow ${this.workflowName}] Step ${e} already completed, replaying from history`,
       ),
         this.history.get(e);
     }
     if (t.rollback) {
-      for (let c of t.rollback) {
-        let h = `${e}-rb-${c}`;
-        this.history.has(h) ||
+      for (let n of t.rollback) {
+        let l = `${e}-rb-${n}`;
+        this.history.has(l) ||
           (await this.client.workflow.createEvent(this.runId, {
             eventType: "rollback_registered",
-            correlationId: h,
-            payload: { method: c },
+            correlationId: l,
+            payload: { method: n },
           }),
-            this.rollbackStack.push(c));
+            this.rollbackStack.push(n));
       }
+    }
+    if (t.rollbackFn) {
+      let n = `${e}-rbfn`;
+      this.history.has(n) ||
+        (await this.client.workflow.createEvent(this.runId, {
+          eventType: "rollback_registered",
+          correlationId: n,
+          payload: { isFunction: !0 },
+        }),
+          this.rollbackStack.push(n),
+          this.history.set(n, t.rollbackFn));
     }
     let a = t.retries || 0, i = 0;
     for (
@@ -992,49 +1036,49 @@ var d = class {
               payload: { attempt: i, name: o || e },
             }),
             this.emittedEvents.add(e));
-        let c = await s.apply(this, r);
+        let n = await s.apply(this, r);
         return console.log(
           `[Workflow ${this.workflowName}] Step ${e} completed`,
         ),
           await this.client.workflow.createEvent(this.runId, {
             eventType: "step_completed",
             correlationId: e,
-            payload: { output: c },
+            payload: { output: n },
           }),
           this.completedSteps.add(e),
-          this.history.set(e, c),
-          c;
-      } catch (c) {
+          this.history.set(e, n),
+          n;
+      } catch (n) {
         if (i < a) {
           i++,
             this.stepAttempts.set(e, i),
             await this.client.workflow.createEvent(this.runId, {
               eventType: "step_retrying",
               correlationId: e,
-              payload: { error: c.message, attempt: i },
+              payload: { error: n.message, attempt: i },
             }),
-            await new Promise((h) => setTimeout(h, 1e3 * i));
+            await new Promise((l) => setTimeout(l, 1e3 * i));
           continue;
         }
         throw await this.client.workflow.createEvent(this.runId, {
           eventType: "step_failed",
           correlationId: e,
-          payload: { error: c.message, attempt: i },
+          payload: { error: n.message, attempt: i },
         }),
-          c;
+          n;
       }
     }
   }
 };
-function U(n, e = {}) {
+function R(c, e = {}) {
   return function (s) {
-    w.set(n, s), s.prototype.workflowName = n, s.prototype.workflowOptions = e;
+    w.set(c, s), s.prototype.workflowName = c, s.prototype.workflowOptions = e;
     let r = s.prototype.run;
     r && (s.prototype.run = async function (...t) {
       let o = this;
       if (!o.client) throw new Error("Workflow needs a RocketBaseClient.");
       if (!o.runId) {
-        let a = await o.client.workflow.trigger(n, t, e);
+        let a = await o.client.workflow.trigger(c, t, e);
         o.runId = a.runId;
       }
       await o.client.workflow.updateRun(o.runId, { status: "running" });
@@ -1047,12 +1091,12 @@ function U(n, e = {}) {
           }),
           a;
       } catch (a) {
-        if (a instanceof l) return;
-        console.error(`[Workflow ${n}] Failed:`, a.message);
+        if (a instanceof h) return;
+        console.error(`[Workflow ${c}] Failed:`, a.message);
         try {
           await o.runRollback(a);
         } catch (i) {
-          console.error(`[Workflow ${n}] Rollback failed:`, i.message);
+          console.error(`[Workflow ${c}] Rollback failed:`, i.message);
         }
         throw await o.client.workflow.updateRun(o.runId, {
           status: "failed",
@@ -1063,15 +1107,15 @@ function U(n, e = {}) {
     });
   };
 }
-function R(n, e = {}) {
+function U(c, e = {}) {
   return function (s, r, t) {
     let o = t.value;
     t.value = async function (...a) {
-      return this.executeStep(n, o, a, e);
+      return this.executeStep(c, o, a, e);
     };
   };
 }
-var m = class {
+var g = class {
   client;
   active;
   workflowNames;
@@ -1154,8 +1198,8 @@ var m = class {
           this.client.workflow.getRun(r),
           this.client.workflow.listEvents(r),
         ]),
-        c = w.get(s);
-      if (!c) {
+        n = w.get(s);
+      if (!n) {
         console.error(
           `[Worker ${s}] Workflow class not found in registry. Registered:`,
           Array.from(w.keys()),
@@ -1164,8 +1208,8 @@ var m = class {
           await this.client.workflow.nack(e.id);
         return;
       }
-      let h = new c(this.client);
-      h.runId = r, h.rebuildState(i);
+      let l = new n(this.client);
+      l.runId = r, l.rebuildState(i);
       let S = a.executionTimeout || 3e4,
         f,
         b = new Promise((E, $) => {
@@ -1175,17 +1219,17 @@ var m = class {
           );
         });
       try {
-        await Promise.race([h.run(...t || []), b]);
+        await Promise.race([l.run(...t || []), b]);
       } finally {
         f && clearTimeout(f);
       }
       clearInterval(o),
         await this.client.workflow.ack(e.id),
-        h.isSuspended
+        l.isSuspended
           ? console.log(`[Worker ${s}] Job ${e.id} suspended`)
           : console.log(`[Worker ${s}] Job ${e.id} completed`);
     } catch (a) {
-      if (clearInterval(o), a instanceof l) {
+      if (clearInterval(o), a instanceof h) {
         await this.client.workflow.ack(e.id),
           console.log(`[Worker ${s}] Job ${e.id} suspended`);
         return;
@@ -1200,15 +1244,15 @@ var m = class {
             status: "failed",
             error: { message: i },
           });
-        } catch (c) {
-          console.error(`[Worker ${s}] Failed to update run status:`, c);
+        } catch (n) {
+          console.error(`[Worker ${s}] Failed to update run status:`, n);
         }
       }
       await this.client.workflow.ack(e.id);
     }
   }
 };
-var g = class extends Error {
+var m = class extends Error {
   constructor(e = "Rollback stopped") {
     super(e), this.name = "StopRollback";
   }
@@ -1217,26 +1261,26 @@ var u,
   y = globalThis.AsyncLocalStorage ||
     (await import("node:async_hooks").catch(() => ({}))).AsyncLocalStorage;
 if (y) {
-  let n = new y();
-  u = { run: (e, s) => n.run(e, s), getStore: () => n.getStore() };
+  let c = new y();
+  u = { run: (e, s) => c.run(e, s), getStore: () => c.getStore() };
 } else {
-  let n = null;
+  let c = null;
   u = {
     run: (e, s) => {
-      let r = n;
-      n = e;
+      let r = c;
+      c = e;
       try {
         let t = s();
         return t instanceof Promise
           ? t.finally(() => {
-            n = r;
+            c = r;
           })
-          : (n = r, t);
+          : (c = r, t);
       } catch (t) {
-        throw n = r, t;
+        throw c = r, t;
       }
     },
-    getStore: () => n,
+    getStore: () => c,
   },
     typeof window < "u" &&
     console.warn(
@@ -1244,12 +1288,12 @@ if (y) {
     );
 }
 var p = u;
-function K(n, e = {}) {
+function B(c, e = {}) {
   return {
     run: (s) => {
       let r = class extends d {
-        static workflowName = n;
-        workflowName = n;
+        static workflowName = c;
+        workflowName = c;
         workflowOptions = e;
         async run(...o) {
           let a = this;
@@ -1262,13 +1306,13 @@ function K(n, e = {}) {
           });
         }
       };
-      w.set(n, r);
+      w.set(c, r);
       let t = r.prototype.run;
       return r.prototype.run = async function (...o) {
         let a = this;
         if (!a.client) throw new Error("Workflow needs a RocketBaseClient.");
         if (!a.runId) {
-          let i = await a.client.workflow.trigger(n, o, e);
+          let i = await a.client.workflow.trigger(c, o, e);
           a.runId = i.runId;
         }
         await a.client.workflow.updateRun(a.runId, { status: "running" });
@@ -1281,12 +1325,12 @@ function K(n, e = {}) {
             }),
             i;
         } catch (i) {
-          if (i instanceof l) return;
-          console.error(`[Workflow ${n}] Failed:`, i.message);
+          if (i instanceof h) return;
+          console.error(`[Workflow ${c}] Failed:`, i.message);
           try {
             await a.runRollback(i);
-          } catch (c) {
-            console.error(`[Workflow ${n}] Rollback failed:`, c.message);
+          } catch (n) {
+            console.error(`[Workflow ${c}] Rollback failed:`, n.message);
           }
           throw await a.client.workflow.updateRun(a.runId, {
             status: "failed",
@@ -1299,27 +1343,28 @@ function K(n, e = {}) {
     },
   };
 }
-function H(n, e, s) {
+function K(c, e, s) {
   let r, t, o = {};
-  return typeof n == "string"
-    ? (r = n, t = e, o = s || {})
-    : (t = n, r = "", o = e || {}),
+  return typeof c == "string"
+    ? (r = c, t = e, o = s || {})
+    : (t = c, r = "", o = e || {}),
+    s && s.rollbackFn && (o.rollbackFn = s.rollbackFn),
     async function (...a) {
       let i = this instanceof d ? this : p.getStore();
       if (!i) return await t(...a);
-      let c = r || i.getSequentialId("step");
-      return i.executeStep(c, t.bind(i), a, o, t.name);
+      let n = r || i.getSequentialId("step");
+      return i.executeStep(n, t.bind(i), a, o, t.name);
     };
 }
 export {
+  B as workflow,
   d as WorkflowBase,
-  g as StopRollback,
-  H as step,
-  K as workflow,
+  g as WorkflowWorker,
+  K as step,
   k as RocketBaseClient,
-  m as WorkflowWorker,
-  R as Step,
-  U as Workflow,
+  m as StopRollback,
+  R as Workflow,
+  U as Step,
   w as WorkflowRegistry,
 };
 //# sourceMappingURL=exports.js.map
