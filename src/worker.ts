@@ -59,11 +59,10 @@ export class WorkflowWorker {
   }
 
   /**
-   * Resumes pending and running runs for the workflow.
+   * Resumes pending and running runs for a workflow.
    * @param workflowName - The name of the workflow.
    */
   private async resumePending(workflowName: string): Promise<void> {
-    // Fetch runs that are not completed/failed
     const pending = await this.client.workflow.listRuns({
       workflowName,
       status: "pending",
@@ -121,7 +120,6 @@ export class WorkflowWorker {
     console.log(`[Worker ${workflowName}] Processing job ${job.id}`);
     const { runId, input } = job.data;
 
-    // Start heartbeat
     const heartbeatInterval = setInterval(async () => {
       try {
         await this.client.workflow.touch(job.id);
@@ -130,10 +128,8 @@ export class WorkflowWorker {
           `[Worker ${workflowName}] Heartbeat failed for job ${job.id}`,
         );
       }
-    }, 15000); // Every 15 seconds (well within the 30s timeout)
+    }, 5000);
 
-    // The job.data should contain the inputs
-    // Check for correct workflow
     if (
       job.data.workflowName && !this.workflowNames.has(job.data.workflowName)
     ) {
@@ -166,8 +162,7 @@ export class WorkflowWorker {
       instance.runId = runId;
       instance.rebuildState(events);
 
-      // Execute with timeout
-      const timeout = run.executionTimeout || 30000;
+      const timeout = run.executionTimeout || 31536000000;
       let timeoutId: NodeJS.Timeout | number | undefined;
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(
@@ -185,10 +180,18 @@ export class WorkflowWorker {
         if (timeoutId) clearTimeout(timeoutId as number);
       }
 
-      // If we get here, execution completed successfully (or suspended successfully)
-      // Ack the job
+      if (!instance.isSuspended) {
+        console.log(
+          `[Worker ${workflowName}] Job ${job.id} completed, updating run status`,
+        );
+        await this.client.workflow.updateRun(runId, {
+          status: "completed",
+        });
+      }
+
       clearInterval(heartbeatInterval);
       await this.client.workflow.ack(job.id);
+
       if (instance.isSuspended) {
         console.log(`[Worker ${workflowName}] Job ${job.id} suspended`);
       } else {
@@ -217,7 +220,7 @@ export class WorkflowWorker {
           });
         } catch (err) {
           console.error(
-            `[Worker ${workflowName}] Failed to update run status:`,
+            `[Worker ${workflowName}] Failed to update run status`,
             err,
           );
         }

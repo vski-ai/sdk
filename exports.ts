@@ -6,3 +6,4 @@ export * from "./src/decorators.ts";
 export * from "./src/worker.ts";
 export * from "./src/errors.ts";
 export * from "./src/functional.ts";
+export * from "./src/suspension.ts";

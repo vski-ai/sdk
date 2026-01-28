@@ -233,8 +233,11 @@ export class WorkflowBase {
           const result = await rollbackFn(error, accumulator);
           accumulator[rollbackId] = result;
         } catch (e) {
-          if (e.name === "StopRollback") break;
-          console.error(`Rollback function ${rollbackId} failed:`, e.message);
+          if ((e as Error).name === "StopRollback") break;
+          console.error(
+            `Rollback function ${rollbackId} failed:`,
+            (e as Error).message,
+          );
         }
       } else {
         const method = rollbackId as string;
@@ -244,8 +247,11 @@ export class WorkflowBase {
               [method](error, accumulator);
             accumulator[method] = result;
           } catch (e) {
-            if (e.name === "StopRollback") break;
-            console.error(`Rollback method ${method} failed:`, e.message);
+            if ((e as Error).name === "StopRollback") break;
+            console.error(
+              `Rollback method ${method} failed:`,
+              (e as Error).message,
+            );
           }
         }
       }
@@ -407,7 +413,7 @@ export class WorkflowBase {
           await this.client.workflow.createEvent(this.runId, {
             eventType: "step_retrying",
             correlationId: id,
-            payload: { error: e.message, attempt },
+            payload: { error: (e as Error).message, attempt },
           });
           await new Promise((r) => setTimeout(r, 1000 * attempt));
           continue;
@@ -415,7 +421,7 @@ export class WorkflowBase {
         await this.client.workflow.createEvent(this.runId, {
           eventType: "step_failed",
           correlationId: id,
-          payload: { error: e.message, attempt },
+          payload: { error: (e as Error).message, attempt },
         });
         throw e;
       }

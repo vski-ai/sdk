@@ -48,6 +48,10 @@ export function workflow(
         }
       };
 
+      // Set workflowOptions on prototype so it's accessible via Class.prototype.workflowOptions
+      // This is required for client.workflow.trigger to retrieve default options
+      FunctionalWorkflow.prototype.workflowOptions = options;
+
       // Register context-aware wrapper similar to @Workflow decorator
       WorkflowRegistry.set(name, FunctionalWorkflow);
 

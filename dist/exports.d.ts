@@ -709,6 +709,8 @@ export declare class RocketBaseClient {
       message: any,
       opts?: any,
     ) => Promise<unknown>;
+    getJob: (messageId: string) => Promise<unknown>;
+    getProcessingJobs: (runId: string) => Promise<unknown>;
     ack: (messageId: string) => Promise<unknown>;
     nack: (messageId: string) => Promise<unknown>;
     touch: (messageId: string) => Promise<unknown>;
@@ -888,7 +890,7 @@ export declare class WorkflowWorker {
     resume?: boolean;
   }): Promise<void>;
   /**
-   * Resumes pending and running runs for the workflow.
+   * Resumes pending and running runs for a workflow.
    * @param workflowName - The name of the workflow.
    */
   private resumePending;
@@ -940,5 +942,16 @@ export declare function step<T extends (...args: any[]) => Promise<any>>(
   fnOrOptions?: T | StepOptions,
   options?: StepOptions,
 ): T;
+/**
+ * Internal error used to signal that a workflow execution is suspended.
+ * This is caught by the worker to save state and exit the execution loop.
+ */
+export declare class WorkflowSuspension extends Error {
+  /**
+   * Creates a new WorkflowSuspension error.
+   * @param message - The reason for suspension.
+   */
+  constructor(message?: string);
+}
 
 export {};

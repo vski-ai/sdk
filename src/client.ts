@@ -869,7 +869,7 @@ export class RocketBaseClient {
         const isFormData = data instanceof FormData;
         const h = { ...self.headers };
         if (isFormData) delete h["Content-Type"];
-
+        console.log("-0--->", data);
         const res = await fetch(
           `${self.baseUrl}/api/collections/${name}/records`,
           {
@@ -1238,6 +1238,8 @@ export class RocketBaseClient {
       message: any,
       opts?: any,
     ) => Promise<unknown>;
+    getJob: (messageId: string) => Promise<unknown>;
+    getProcessingJobs: (runId: string) => Promise<unknown>;
     ack: (messageId: string) => Promise<unknown>;
     nack: (messageId: string) => Promise<unknown>;
     touch: (messageId: string) => Promise<unknown>;
@@ -1604,9 +1606,50 @@ export class RocketBaseClient {
       },
 
       /**
+       * Gets a queue message by ID.
+       */
+      getJob: async (messageId: string): Promise<unknown> => {
+        const res = await fetch(`${base}/queue/${messageId}`, {
+          headers: self.headers,
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        return res.json();
+      },
+
+      /**
+       * Gets processing jobs for a run.
+       */
+      getProcessingJobs: async (runId: string): Promise<unknown> => {
+        const p = new URLSearchParams();
+        p.append("runId", runId);
+        p.append("status", "processing");
+
+        const res = await fetch(`${base}/queue/jobs?${p.toString()}`, {
+          headers: self.headers,
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        return res.json();
+      },
+
+      /**
        * Touches a message (extends visibility timeout).
        */
       touch: async (messageId: string): Promise<unknown> => {
+        // Send touch via WebSocket to reset gateway timeout
+        if (self.workflowSocket?.readyState === 1) {
+          self.workflowSocket.send(
+            JSON.stringify({
+              event: "TOUCH",
+              data: { messageId },
+            }),
+          );
+        }
+
+        // Also update the database record
         const res = await fetch(`${base}/queue/touch`, {
           method: "POST",
 

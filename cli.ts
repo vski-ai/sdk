@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno run --allow-env --allow-read --allow-write --allow-net
-import { parseArgs } from "@std/cli/parse-args";
+import { parseArgs } from "jsr:@std/cli@^1.0.26";
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { RocketBaseClient } from "https://raw.githubusercontent.com/vski-ai/sdk/main/exports.ts";
