@@ -455,6 +455,9 @@ export declare class RocketBaseClient {
   private workflowSocket;
   private subscriptions;
   private workflowSubscriptions;
+  private workflowReadyResolve;
+  private workflowReadyPromise;
+  private confirmedWorkflowSubscriptions;
   /**
    * Creates a new instance of the RocketBase client.
    * @param baseUrl - The base URL of the RocketBase server (default: http://127.0.0.1:3000).
@@ -492,7 +495,7 @@ export declare class RocketBaseClient {
   close(): void;
   /**
    * Subscribes a worker to jobs for a specific workflow.
-   * @param workflowName - The name of the workflow.
+   * @param workflowName - The name of a workflow.
    * @param callback - Function called when a job is received.
    * @returns A function to unsubscribe.
    */
@@ -500,8 +503,25 @@ export declare class RocketBaseClient {
     workflowName: string,
     callback: (job: any) => void,
   ): () => void;
+  /**
+   * Sends a SUBSCRIBE message for a workflow with retry logic.
+   * @param workflowName - The name of a workflow.
+   * @param attempt - Current retry attempt number.
+   */
+  private sendSubscribeMessage;
+  /**
+   * Waits for all workflow subscriptions to be confirmed by the server.
+   * @returns A promise that resolves when worker is ready to accept jobs.
+   */
+  waitForWorkflowReady(): Promise<void>;
+  private resolveWorkflowReadyIfAllConfirmed;
   /** Connects to the workflow WebSocket server. */
   private connectWorkflow;
+  /**
+   * Polls for missed jobs after WebSocket reconnection.
+   * Checks for pending and running runs for all subscribed workflows.
+   */
+  private pollForMissedJobs;
   /** Headers for standard requests. */
   private get headers();
   /** Headers for administrative requests. */
@@ -870,10 +890,13 @@ export declare function Step(
 export declare class WorkflowWorker {
   private client;
   private active;
+  private ready;
   private workflowNames;
   private stopCallback;
   private activeJobs;
   private unsubscribers;
+  private pendingSubscriptions;
+  private confirmedSubscriptions;
   /**
    * Creates a new instance of WorkflowWorker.
    * @param client - The RocketBase client instance.
@@ -894,6 +917,11 @@ export declare class WorkflowWorker {
    * @param workflowName - The name of the workflow.
    */
   private resumePending;
+  /**
+   * Polls for jobs during startup to ensure no jobs are missed during connection window.
+   * @param workflowNames - List of workflow names to poll for.
+   */
+  private pollJobsOnStartup;
   /**
    * Stops the worker, closing the connection and waiting for active jobs to complete.
    * @returns A promise that resolves when the worker is fully stopped.

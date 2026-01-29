@@ -12,10 +12,13 @@ import type { WorkflowJob, WorkflowRun } from "./types.ts";
  */
 export class WorkflowWorker {
   private active = false;
+  private ready = false;
   private workflowNames = new Set<string>();
   private stopCallback: (() => void) | null = null;
   private activeJobs = new Set<Promise<void>>();
   private unsubscribers = new Map<string, () => void>();
+  private pendingSubscriptions = new Map<string, Promise<void>>();
+  private confirmedSubscriptions = new Set<string>();
 
   /**
    * Creates a new instance of WorkflowWorker.
@@ -34,24 +37,45 @@ export class WorkflowWorker {
     options: { concurrency?: number; resume?: boolean } = {},
   ): Promise<void> {
     this.active = true;
+    this.ready = false;
     const names = Array.isArray(workflowName) ? workflowName : [workflowName];
+
+    console.log(`[Worker] Starting worker for workflows: ${names.join(", ")}`);
 
     for (const name of names) {
       this.workflowNames.add(name);
       const unsub = this.client.subscribeWorkflow(name, (job) => {
-        if (!this.active) return;
+        if (!this.active) {
+          console.log(`[Worker] Worker is not active, ignoring job ${job.id}`);
+          return;
+        }
+        if (!this.ready) {
+          console.log(
+            `[Worker] Worker is not ready yet, ignoring job ${job.id}`,
+          );
+          return;
+        }
         const promise = this.processJob(job);
         this.activeJobs.add(promise);
         promise.finally(() => this.activeJobs.delete(promise));
       });
       this.unsubscribers.set(name, unsub);
-
-      if (options.resume) {
-        this.resumePending(name).catch((e) =>
-          console.error(`[Worker ${name}] Resume failed:`, e)
-        );
-      }
     }
+
+    this.client.waitForWorkflowReady().then(() => {
+      console.log(
+        `[Worker] Worker is now ready and accepting jobs for workflows: ${
+          Array.from(this.workflowNames).join(", ")
+        }`,
+      );
+      this.ready = true;
+    }).catch((e) => {
+      console.error(`[Worker] Failed to reach ready state:`, e);
+    });
+
+    this.pollJobsOnStartup(Array.from(this.workflowNames)).catch((e) => {
+      console.error("[Worker] Startup polling failed:", e);
+    });
 
     return new Promise((resolve) => {
       this.stopCallback = resolve;
@@ -63,26 +87,82 @@ export class WorkflowWorker {
    * @param workflowName - The name of the workflow.
    */
   private async resumePending(workflowName: string): Promise<void> {
-    const pending = await this.client.workflow.listRuns({
-      workflowName,
-      status: "pending",
-    });
-    const running = await this.client.workflow.listRuns({
-      workflowName,
-      status: "running",
-    });
+    console.log(
+      `[Worker ${workflowName}] Polling for pending and running runs...`,
+    );
 
-    const all: WorkflowRun[] = [
-      ...(pending.items ||
-        (pending as unknown as { data: WorkflowRun[] }).data || []),
-      ...(running.items ||
-        (running as unknown as { data: WorkflowRun[] }).data || []),
-    ];
-    console.log(`[Worker ${workflowName}] Resuming ${all.length} runs`);
+    try {
+      const pending = await this.client.workflow.listRuns({
+        workflowName,
+        status: "pending",
+      });
+      const running = await this.client.workflow.listRuns({
+        workflowName,
+        status: "running",
+      });
 
-    for (const run of all) {
-      await this.client.workflow.resume(run.runId);
+      const all: WorkflowRun[] = [
+        ...(pending.items ||
+          (pending as unknown as { data: WorkflowRun[] }).data || []),
+        ...(running.items ||
+          (running as unknown as { data: WorkflowRun[] }).data || []),
+      ];
+
+      console.log(
+        `[Worker ${workflowName}] Found ${all.length} runs to resume`,
+      );
+
+      let resumedCount = 0;
+      for (const run of all) {
+        try {
+          await this.client.workflow.resume(run.runId);
+          resumedCount++;
+          console.log(
+            `[Worker ${workflowName}] Resumed run ${run.runId} (status: ${run.status})`,
+          );
+        } catch (e: unknown) {
+          console.error(
+            `[Worker ${workflowName}] Failed to resume run ${run.runId}:`,
+            e instanceof Error ? e.message : String(e),
+          );
+        }
+      }
+
+      console.log(
+        `[Worker ${workflowName}] Successfully resumed ${resumedCount}/${all.length} runs`,
+      );
+    } catch (e: unknown) {
+      console.error(
+        `[Worker ${workflowName}] Error polling for pending runs:`,
+        e instanceof Error ? e.message : String(e),
+      );
+      throw e;
     }
+  }
+
+  /**
+   * Polls for jobs during startup to ensure no jobs are missed during connection window.
+   * @param workflowNames - List of workflow names to poll for.
+   */
+  private async pollJobsOnStartup(workflowNames: string[]): Promise<void> {
+    console.log(
+      `[Worker] Polling for jobs on startup for workflows: ${
+        workflowNames.join(", ")
+      }`,
+    );
+
+    for (const name of workflowNames) {
+      try {
+        await this.resumePending(name);
+      } catch (e) {
+        console.error(
+          `[Worker] Startup polling failed for workflow ${name}:`,
+          e,
+        );
+      }
+    }
+
+    console.log(`[Worker] Startup polling completed`);
   }
 
   /**
@@ -90,11 +170,15 @@ export class WorkflowWorker {
    * @returns A promise that resolves when the worker is fully stopped.
    */
   async stop(): Promise<void> {
+    console.log("[Worker] Stopping worker...");
     this.active = false;
+    this.ready = false;
     for (const unsub of this.unsubscribers.values()) {
       unsub();
     }
     this.unsubscribers.clear();
+    this.confirmedSubscriptions.clear();
+    this.pendingSubscriptions.clear();
 
     if (this.activeJobs.size > 0) {
       console.log(
@@ -103,6 +187,7 @@ export class WorkflowWorker {
       await Promise.allSettled(this.activeJobs);
     }
 
+    console.log("[Worker] Worker stopped");
     if (this.stopCallback) {
       this.stopCallback();
       this.stopCallback = null;

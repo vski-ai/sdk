@@ -65,13 +65,17 @@ export function workflow(
         const self = this as WorkflowBase;
         if (!self.client) throw new Error("Workflow needs a RocketBaseClient.");
 
+        // If runId is not set, this is a new workflow execution - trigger it
+        // If runId is already set, this is a resume - just update status and execute
         if (!self.runId) {
           const run = await self.client.workflow.trigger(name, args, options);
           self.runId = run.runId;
         }
 
         // Update status to running
-        await self.client.workflow.updateRun(self.runId, { status: "running" });
+        await self.client.workflow.updateRun(self.runId!, {
+          status: "running",
+        });
 
         try {
           const result = await (originalRun as any).apply(self, args);

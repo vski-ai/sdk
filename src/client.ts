@@ -42,6 +42,9 @@ export class RocketBaseClient {
     }
   >();
   private workflowSubscriptions = new Map<string, Set<(job: any) => void>>();
+  private workflowReadyResolve: (() => void) | null = null;
+  private workflowReadyPromise: Promise<void> | null = null;
+  private confirmedWorkflowSubscriptions = new Set<string>();
 
   /**
    * Creates a new instance of the RocketBase client.
@@ -145,7 +148,7 @@ export class RocketBaseClient {
 
   /**
    * Subscribes a worker to jobs for a specific workflow.
-   * @param workflowName - The name of the workflow.
+   * @param workflowName - The name of a workflow.
    * @param callback - Function called when a job is received.
    * @returns A function to unsubscribe.
    */
@@ -155,17 +158,19 @@ export class RocketBaseClient {
   ): () => void {
     if (!this.workflowSubscriptions.has(workflowName)) {
       this.workflowSubscriptions.set(workflowName, new Set());
+      this.confirmedWorkflowSubscriptions.delete(workflowName);
+
+      if (!this.workflowReadyPromise) {
+        this.workflowReadyPromise = new Promise((resolve) => {
+          this.workflowReadyResolve = resolve;
+        });
+      }
     }
     this.workflowSubscriptions.get(workflowName)!.add(callback);
     this.connectWorkflow();
 
     if (this.workflowSocket?.readyState === 1) {
-      this.workflowSocket.send(
-        JSON.stringify({
-          event: "SUBSCRIBE",
-          data: { queue: `__wkf_workflow_${workflowName}` },
-        }),
-      );
+      this.sendSubscribeMessage(workflowName);
     }
 
     return () => {
@@ -174,9 +179,100 @@ export class RocketBaseClient {
         subs.delete(callback);
         if (subs.size === 0) {
           this.workflowSubscriptions.delete(workflowName);
+          this.confirmedWorkflowSubscriptions.delete(workflowName);
         }
       }
     };
+  }
+
+  /**
+   * Sends a SUBSCRIBE message for a workflow with retry logic.
+   * @param workflowName - The name of a workflow.
+   * @param attempt - Current retry attempt number.
+   */
+  private sendSubscribeMessage(
+    workflowName: string,
+    attempt: number = 0,
+  ): void {
+    if (!this.workflowSocket || this.workflowSocket.readyState !== 1) {
+      if (attempt < 3) {
+        setTimeout(
+          () => this.sendSubscribeMessage(workflowName, attempt + 1),
+          100,
+        );
+      } else {
+        console.error(
+          `[Client] Failed to send SUBSCRIBE for ${workflowName} after ${attempt} attempts`,
+        );
+      }
+      return;
+    }
+
+    try {
+      this.workflowSocket.send(
+        JSON.stringify({
+          event: "SUBSCRIBE",
+          data: { queue: `__wkf_workflow_${workflowName}` },
+        }),
+      );
+      console.log(
+        `[Client] Sent SUBSCRIBE message for workflow: ${workflowName}`,
+      );
+    } catch (e) {
+      console.error(`[Client] Error sending SUBSCRIBE for ${workflowName}:`, e);
+      if (attempt < 3) {
+        setTimeout(
+          () => this.sendSubscribeMessage(workflowName, attempt + 1),
+          100 * (attempt + 1),
+        );
+      }
+    }
+  }
+
+  /**
+   * Waits for all workflow subscriptions to be confirmed by the server.
+   * @returns A promise that resolves when worker is ready to accept jobs.
+   */
+  async waitForWorkflowReady(): Promise<void> {
+    if (this.workflowSubscriptions.size === 0) {
+      console.warn("[Client] No workflow subscriptions to wait for");
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      console.warn(
+        `[Client] Workflow ready timeout - some subscriptions may not be confirmed. Subscribed: ${
+          Array.from(this.workflowSubscriptions.keys()).join(", ")
+        }, Confirmed: ${
+          Array.from(this.confirmedWorkflowSubscriptions.keys()).join(", ")
+        }`,
+      );
+      if (this.workflowReadyResolve) {
+        this.workflowReadyResolve();
+      }
+    }, 30000);
+
+    if (this.workflowReadyPromise) {
+      await this.workflowReadyPromise;
+    }
+
+    clearTimeout(timeout);
+  }
+
+  private resolveWorkflowReadyIfAllConfirmed(): void {
+    if (
+      this.workflowReadyResolve &&
+      this.workflowSubscriptions.size > 0 &&
+      this.confirmedWorkflowSubscriptions.size ===
+        this.workflowSubscriptions.size
+    ) {
+      console.log(
+        `[Client] All ${this.confirmedWorkflowSubscriptions.size} workflow subscriptions confirmed`,
+      );
+      this.workflowReadyResolve();
+      this.workflowReadyResolve = null;
+      this.workflowReadyPromise = null;
+    }
   }
 
   /** Connects to the workflow WebSocket server. */
@@ -190,6 +286,11 @@ export class RocketBaseClient {
       return;
     }
 
+    const wasConnected = this.workflowSocket?.readyState === 1;
+    console.log(
+      "[Client] Connecting to workflow WebSocket...",
+      wasConnected ? "(reconnecting)" : "",
+    );
     const token = this.getToken() || this.apiKey;
     const wsUrl = this.baseUrl.replace(/^http/, "ws") +
       "/api/workflow/ws" +
@@ -199,7 +300,9 @@ export class RocketBaseClient {
     this.workflowSocket = new WebSocket(wsUrl);
 
     this.workflowSocket.onopen = () => {
+      console.log("[Client] Workflow WebSocket connected");
       this.workflowSubscriptions.forEach((_, name) => {
+        console.log(`[Client] Subscribing to workflow: ${name}`);
         this.workflowSocket?.send(
           JSON.stringify({
             event: "SUBSCRIBE",
@@ -212,13 +315,21 @@ export class RocketBaseClient {
     this.workflowSocket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        if (msg.event === "JOB") {
+        if (msg.event === "SUBSCRIBED") {
+          const workflowName = msg.data?.workflowName;
+          if (workflowName) {
+            console.log(
+              `[Client] Subscription confirmed for workflow: ${workflowName}`,
+            );
+            this.confirmedWorkflowSubscriptions.add(workflowName);
+            this.resolveWorkflowReadyIfAllConfirmed();
+          }
+        } else if (msg.event === "JOB") {
           const workflowName = msg.data?.data?.workflowName;
           if (!workflowName) return;
 
           const subs = this.workflowSubscriptions.get(workflowName);
           if (subs && subs.size > 0) {
-            // Load balance among local workers if multiple exist
             const arr = Array.from(subs);
             const listener = arr[Math.floor(Math.random() * arr.length)];
             listener(msg.data);
@@ -229,11 +340,84 @@ export class RocketBaseClient {
       }
     };
 
-    this.workflowSocket.onclose = () => {
+    this.workflowSocket.onerror = (error) => {
+      console.error("[Client] Workflow WebSocket error:", error);
+    };
+
+    this.workflowSocket.onclose = (event) => {
+      console.log(
+        `[Client] Workflow WebSocket closed (code: ${event.code}). Reconnecting...`,
+      );
+      this.confirmedWorkflowSubscriptions.clear();
+
+      if (wasConnected && this.workflowSubscriptions.size > 0) {
+        console.log(
+          "[Client] Polling for jobs that may have been missed during disconnect...",
+        );
+        setTimeout(async () => {
+          try {
+            await this.pollForMissedJobs();
+          } catch (e) {
+            console.error(
+              "[Client] Error polling for missed jobs after reconnection:",
+              e,
+            );
+          }
+        }, 1000);
+      }
+
       if (this.workflowSubscriptions.size > 0) {
         setTimeout(() => this.connectWorkflow(), 3000);
       }
     };
+  }
+
+  /**
+   * Polls for missed jobs after WebSocket reconnection.
+   * Checks for pending and running runs for all subscribed workflows.
+   */
+  private async pollForMissedJobs(): Promise<void> {
+    const workflowNames = Array.from(this.workflowSubscriptions.keys());
+
+    if (workflowNames.length === 0) {
+      return;
+    }
+
+    console.log(
+      `[Client] Polling for missed jobs in workflows: ${
+        workflowNames.join(", ")
+      }`,
+    );
+
+    for (const workflowName of workflowNames) {
+      try {
+        const pending = await this.workflow.listRuns({
+          workflowName,
+          status: "pending",
+        });
+        const running = await this.workflow.listRuns({
+          workflowName,
+          status: "running",
+        });
+
+        const all = [
+          ...(pending.items || []),
+          ...(running.items || []),
+        ];
+
+        if (all.length > 0) {
+          console.log(
+            `[Client] Found ${all.length} pending/running runs for workflow ${workflowName}, resuming...`,
+          );
+          for (const run of all) {
+            await this.workflow.resume(run.runId);
+            console.log(`[Client] Resumed run ${run.runId}`);
+          }
+        }
+      } catch (e) {
+        console.error(`[Client] Error polling workflow ${workflowName}:`, e);
+      }
+    }
   }
 
   /** Headers for standard requests. */
@@ -869,7 +1053,6 @@ export class RocketBaseClient {
         const isFormData = data instanceof FormData;
         const h = { ...self.headers };
         if (isFormData) delete h["Content-Type"];
-        console.log("-0--->", data);
         const res = await fetch(
           `${self.baseUrl}/api/collections/${name}/records`,
           {

@@ -1,4 +1,4 @@
-var w = new Map();
+var h = new Map();
 var k = class {
   baseUrl;
   token = null;
@@ -9,6 +9,9 @@ var k = class {
   workflowSocket = null;
   subscriptions = new Map();
   workflowSubscriptions = new Map();
+  workflowReadyResolve = null;
+  workflowReadyPromise = null;
+  confirmedWorkflowSubscriptions = new Set();
   constructor(e = "http://127.0.0.1:3000") {
     this.baseUrl = e.endsWith("/") ? e.slice(0, -1) : e,
       typeof window < "u" &&
@@ -57,23 +60,75 @@ var k = class {
       this.subscriptions.clear(),
       this.workflowSubscriptions.clear();
   }
-  subscribeWorkflow(e, s) {
+  subscribeWorkflow(e, o) {
     return this.workflowSubscriptions.has(e) ||
-      this.workflowSubscriptions.set(e, new Set()),
-      this.workflowSubscriptions.get(e).add(s),
+      (this.workflowSubscriptions.set(e, new Set()),
+        this.confirmedWorkflowSubscriptions.delete(e),
+        this.workflowReadyPromise ||
+        (this.workflowReadyPromise = new Promise((r) => {
+          this.workflowReadyResolve = r;
+        }))),
+      this.workflowSubscriptions.get(e).add(o),
       this.connectWorkflow(),
-      this.workflowSocket?.readyState === 1 &&
+      this.workflowSocket?.readyState === 1 && this.sendSubscribeMessage(e),
+      () => {
+        let r = this.workflowSubscriptions.get(e);
+        r &&
+          (r.delete(o),
+            r.size === 0 &&
+            (this.workflowSubscriptions.delete(e),
+              this.confirmedWorkflowSubscriptions.delete(e)));
+      };
+  }
+  sendSubscribeMessage(e, o = 0) {
+    if (!this.workflowSocket || this.workflowSocket.readyState !== 1) {
+      o < 3
+        ? setTimeout(() => this.sendSubscribeMessage(e, o + 1), 100)
+        : console.error(
+          `[Client] Failed to send SUBSCRIBE for ${e} after ${o} attempts`,
+        );
+      return;
+    }
+    try {
       this.workflowSocket.send(
         JSON.stringify({
           event: "SUBSCRIBE",
           data: { queue: `__wkf_workflow_${e}` },
         }),
+      ), console.log(`[Client] Sent SUBSCRIBE message for workflow: ${e}`);
+    } catch (r) {
+      console.error(`[Client] Error sending SUBSCRIBE for ${e}:`, r),
+        o < 3 &&
+        setTimeout(() => this.sendSubscribeMessage(e, o + 1), 100 * (o + 1));
+    }
+  }
+  async waitForWorkflowReady() {
+    if (this.workflowSubscriptions.size === 0) {
+      console.warn("[Client] No workflow subscriptions to wait for");
+      return;
+    }
+    let e = setTimeout(() => {
+      console.warn(
+        `[Client] Workflow ready timeout - some subscriptions may not be confirmed. Subscribed: ${
+          Array.from(this.workflowSubscriptions.keys()).join(", ")
+        }, Confirmed: ${
+          Array.from(this.confirmedWorkflowSubscriptions.keys()).join(", ")
+        }`,
+      ), this.workflowReadyResolve && this.workflowReadyResolve();
+    }, 3e4);
+    this.workflowReadyPromise && await this.workflowReadyPromise,
+      clearTimeout(e);
+  }
+  resolveWorkflowReadyIfAllConfirmed() {
+    this.workflowReadyResolve && this.workflowSubscriptions.size > 0 &&
+      this.confirmedWorkflowSubscriptions.size ===
+        this.workflowSubscriptions.size &&
+      (console.log(
+        `[Client] All ${this.confirmedWorkflowSubscriptions.size} workflow subscriptions confirmed`,
       ),
-      () => {
-        let r = this.workflowSubscriptions.get(e);
-        r &&
-          (r.delete(s), r.size === 0 && this.workflowSubscriptions.delete(e));
-      };
+        this.workflowReadyResolve(),
+        this.workflowReadyResolve = null,
+        this.workflowReadyPromise = null);
   }
   connectWorkflow() {
     if (
@@ -82,41 +137,109 @@ var k = class {
         (this.workflowSocket.readyState === 0 ||
           this.workflowSocket.readyState === 1)
     ) return;
-    let e = this.getToken() || this.apiKey,
-      s = this.baseUrl.replace(/^http/, "ws") +
-        `/api/workflow/ws?db=${this.dbName}` + (e ? `&auth=${e}` : "");
-    this.workflowSocket = new WebSocket(s),
+    let e = this.workflowSocket?.readyState === 1;
+    console.log(
+      "[Client] Connecting to workflow WebSocket...",
+      e ? "(reconnecting)" : "",
+    );
+    let o = this.getToken() || this.apiKey,
+      r = this.baseUrl.replace(/^http/, "ws") +
+        `/api/workflow/ws?db=${this.dbName}` + (o ? `&auth=${o}` : "");
+    this.workflowSocket = new WebSocket(r),
       this.workflowSocket.onopen = () => {
-        this.workflowSubscriptions.forEach((r, t) => {
-          this.workflowSocket?.send(
-            JSON.stringify({
-              event: "SUBSCRIBE",
-              data: { queue: `__wkf_workflow_${t}` },
-            }),
-          );
-        });
+        console.log("[Client] Workflow WebSocket connected"),
+          this.workflowSubscriptions.forEach((t, s) => {
+            console.log(`[Client] Subscribing to workflow: ${s}`),
+              this.workflowSocket?.send(
+                JSON.stringify({
+                  event: "SUBSCRIBE",
+                  data: { queue: `__wkf_workflow_${s}` },
+                }),
+              );
+          });
       },
-      this.workflowSocket.onmessage = (r) => {
+      this.workflowSocket.onmessage = (t) => {
         try {
-          let t = JSON.parse(r.data);
-          if (t.event === "JOB") {
-            let o = t.data?.data?.workflowName;
-            if (!o) return;
-            let a = this.workflowSubscriptions.get(o);
-            if (a && a.size > 0) {
-              let n = Array.from(a),
-                i = n[Math.floor(Math.random() * n.length)];
-              i(t.data);
+          let s = JSON.parse(t.data);
+          if (s.event === "SUBSCRIBED") {
+            let n = s.data?.workflowName;
+            n &&
+              (console.log(
+                `[Client] Subscription confirmed for workflow: ${n}`,
+              ),
+                this.confirmedWorkflowSubscriptions.add(n),
+                this.resolveWorkflowReadyIfAllConfirmed());
+          } else if (s.event === "JOB") {
+            let n = s.data?.data?.workflowName;
+            if (!n) return;
+            let i = this.workflowSubscriptions.get(n);
+            if (i && i.size > 0) {
+              let a = Array.from(i),
+                c = a[Math.floor(Math.random() * a.length)];
+              c(s.data);
             }
           }
-        } catch (t) {
-          console.error("Error handling workflow message:", t);
+        } catch (s) {
+          console.error("Error handling workflow message:", s);
         }
       },
-      this.workflowSocket.onclose = () => {
-        this.workflowSubscriptions.size > 0 &&
+      this.workflowSocket.onerror = (t) => {
+        console.error("[Client] Workflow WebSocket error:", t);
+      },
+      this.workflowSocket.onclose = (t) => {
+        console.log(
+          `[Client] Workflow WebSocket closed (code: ${t.code}). Reconnecting...`,
+        ),
+          this.confirmedWorkflowSubscriptions.clear(),
+          e && this.workflowSubscriptions.size > 0 &&
+          (console.log(
+            "[Client] Polling for jobs that may have been missed during disconnect...",
+          ),
+            setTimeout(async () => {
+              try {
+                await this.pollForMissedJobs();
+              } catch (s) {
+                console.error(
+                  "[Client] Error polling for missed jobs after reconnection:",
+                  s,
+                );
+              }
+            }, 1e3)),
+          this.workflowSubscriptions.size > 0 &&
           setTimeout(() => this.connectWorkflow(), 3e3);
       };
+  }
+  async pollForMissedJobs() {
+    let e = Array.from(this.workflowSubscriptions.keys());
+    if (e.length !== 0) {
+      console.log(
+        `[Client] Polling for missed jobs in workflows: ${e.join(", ")}`,
+      );
+      for (let o of e) {
+        try {
+          let r = await this.workflow.listRuns({
+              workflowName: o,
+              status: "pending",
+            }),
+            t = await this.workflow.listRuns({
+              workflowName: o,
+              status: "running",
+            }),
+            s = [...r.items || [], ...t.items || []];
+          if (s.length > 0) {
+            console.log(
+              `[Client] Found ${s.length} pending/running runs for workflow ${o}, resuming...`,
+            );
+            for (let n of s) {
+              await this.workflow.resume(n.runId),
+                console.log(`[Client] Resumed run ${n.runId}`);
+            }
+          }
+        } catch (r) {
+          console.error(`[Client] Error polling workflow ${o}:`, r);
+        }
+      }
+    }
   }
   get headers() {
     let e = { "Content-Type": "application/json", "x-dbname": this.dbName };
@@ -138,23 +261,23 @@ var k = class {
     return {
       databases: {
         list: async () => {
-          let s = await fetch(`${e.baseUrl}/api/databases`, {
+          let o = await fetch(`${e.baseUrl}/api/databases`, {
             headers: e.headers,
           });
-          if (!s.ok) throw new Error(await s.text());
-          return s.json();
+          if (!o.ok) throw new Error(await o.text());
+          return o.json();
         },
-        create: async (s) => {
+        create: async (o) => {
           let r = await fetch(`${e.baseUrl}/api/databases`, {
             method: "POST",
             headers: e.headers,
-            body: JSON.stringify(s),
+            body: JSON.stringify(o),
           });
           if (!r.ok) throw new Error(await r.text());
           return r.json();
         },
-        delete: async (s) => {
-          let r = await fetch(`${e.baseUrl}/api/databases/${s}`, {
+        delete: async (o) => {
+          let r = await fetch(`${e.baseUrl}/api/databases/${o}`, {
             method: "DELETE",
             headers: e.headers,
           });
@@ -163,17 +286,17 @@ var k = class {
         },
       },
       collections: {
-        create: async (s) => {
+        create: async (o) => {
           let r = await fetch(`${e.baseUrl}/api/collections`, {
             method: "POST",
             headers: e.headers,
-            body: JSON.stringify(s),
+            body: JSON.stringify(o),
           });
           if (!r.ok) throw new Error(await r.text());
           return r.json();
         },
-        update: async (s, r) => {
-          let t = await fetch(`${e.baseUrl}/api/collections/${s}`, {
+        update: async (o, r) => {
+          let t = await fetch(`${e.baseUrl}/api/collections/${o}`, {
             method: "PATCH",
             headers: e.headers,
             body: JSON.stringify(r),
@@ -181,8 +304,8 @@ var k = class {
           if (!t.ok) throw new Error(await t.text());
           return t.json();
         },
-        delete: async (s) => {
-          let r = await fetch(`${e.baseUrl}/api/collections/${s}`, {
+        delete: async (o) => {
+          let r = await fetch(`${e.baseUrl}/api/collections/${o}`, {
             method: "DELETE",
             headers: e.headers,
           });
@@ -190,11 +313,11 @@ var k = class {
           return await r.text(), !0;
         },
         getList: async () => {
-          let s = await fetch(`${e.baseUrl}/api/collections`, {
+          let o = await fetch(`${e.baseUrl}/api/collections`, {
             headers: e.headers,
           });
-          if (!s.ok) throw new Error(await s.text());
-          return s.json();
+          if (!o.ok) throw new Error(await o.text());
+          return o.json();
         },
       },
     };
@@ -202,57 +325,57 @@ var k = class {
   get auth() {
     let e = this;
     return {
-      login: async (s, r) => {
+      login: async (o, r) => {
         let t = await fetch(`${e.baseUrl}/api/auth/login`, {
           method: "POST",
           headers: e.headers,
-          body: JSON.stringify({ identity: s, password: r }),
+          body: JSON.stringify({ identity: o, password: r }),
         });
         if (!t.ok) throw new Error(await t.text());
-        let o = await t.json();
-        return e.setToken(o.token), o;
+        let s = await t.json();
+        return e.setToken(s.token), s;
       },
-      register: async (s) => {
+      register: async (o) => {
         let r = await fetch(`${e.baseUrl}/api/auth/register`, {
           method: "POST",
           headers: e.headers,
-          body: JSON.stringify(s),
+          body: JSON.stringify(o),
         });
         if (!r.ok) throw new Error(await r.text());
         return r.json();
       },
       me: async () => {
-        let s = await fetch(`${e.baseUrl}/api/auth/me`, { headers: e.headers });
-        if (!s.ok) throw new Error(await s.text());
-        return s.json();
+        let o = await fetch(`${e.baseUrl}/api/auth/me`, { headers: e.headers });
+        if (!o.ok) throw new Error(await o.text());
+        return o.json();
       },
       listMethods: async () => {
-        let s = await fetch(`${e.baseUrl}/api/auth/methods`, {
+        let o = await fetch(`${e.baseUrl}/api/auth/methods`, {
           headers: e.headers,
-        });
-        if (!s.ok) throw new Error(await s.text());
-        return s.json();
-      },
-      authViaOAuth2: async (s, r, t) => {
-        let o = await fetch(`${e.baseUrl}/api/auth/oauth2-login`, {
-          method: "POST",
-          headers: e.headers,
-          body: JSON.stringify({ provider: s, code: r, redirectUrl: t }),
         });
         if (!o.ok) throw new Error(await o.text());
-        let a = await o.json();
-        return e.setToken(a.token), a;
+        return o.json();
+      },
+      authViaOAuth2: async (o, r, t) => {
+        let s = await fetch(`${e.baseUrl}/api/auth/oauth2-login`, {
+          method: "POST",
+          headers: e.headers,
+          body: JSON.stringify({ provider: o, code: r, redirectUrl: t }),
+        });
+        if (!s.ok) throw new Error(await s.text());
+        let n = await s.json();
+        return e.setToken(n.token), n;
       },
     };
   }
   get keys() {
     let e = this;
     return {
-      generate: async (s) => {
+      generate: async (o) => {
         let r = await fetch(`${e.baseUrl}/api/keys`, {
           method: "POST",
           headers: e.adminHeaders,
-          body: JSON.stringify(s),
+          body: JSON.stringify(o),
         });
         if (!r.ok) throw new Error(await r.text());
         return r.json();
@@ -262,38 +385,38 @@ var k = class {
   get admins() {
     let e = this;
     return {
-      authWithPassword: async (s, r) => {
+      authWithPassword: async (o, r) => {
         let t = await fetch(`${e.baseUrl}/api/admins/auth-with-password`, {
           method: "POST",
           headers: e.headers,
-          body: JSON.stringify({ identity: s, password: r }),
+          body: JSON.stringify({ identity: o, password: r }),
         });
         if (!t.ok) throw new Error(await t.text());
-        let o = await t.json();
-        return e.setToken(o.token), o;
+        let s = await t.json();
+        return e.setToken(s.token), s;
       },
-      init: async (s) => {
+      init: async (o) => {
         let r = await fetch(`${e.baseUrl}/api/admins/init`, {
           method: "POST",
           headers: e.headers,
-          body: JSON.stringify(s),
+          body: JSON.stringify(o),
         });
         if (!r.ok) throw new Error(await r.text());
         let t = await r.json();
         return e.setToken(t.token), t;
       },
       hasAdmins: async () => {
-        let s = await fetch(`${e.baseUrl}/api/admins/has-admins`, {
+        let o = await fetch(`${e.baseUrl}/api/admins/has-admins`, {
           headers: e.headers,
         });
-        return s.ok ? s.json() : (await s.text(), { hasAdmins: !1 });
+        return o.ok ? o.json() : (await o.text(), { hasAdmins: !1 });
       },
       me: async () => {
-        let s = await fetch(`${e.baseUrl}/api/admins/me`, {
+        let o = await fetch(`${e.baseUrl}/api/admins/me`, {
           headers: e.adminHeaders,
         });
-        if (!s.ok) throw new Error(await s.text());
-        return s.json();
+        if (!o.ok) throw new Error(await o.text());
+        return o.json();
       },
     };
   }
@@ -301,21 +424,21 @@ var k = class {
     let e = this;
     return {
       list: async () => {
-        let s = await fetch(`${e.baseUrl}/api/cron`, { headers: e.headers });
-        if (!s.ok) throw new Error(await s.text());
-        return s.json();
+        let o = await fetch(`${e.baseUrl}/api/cron`, { headers: e.headers });
+        if (!o.ok) throw new Error(await o.text());
+        return o.json();
       },
-      create: async (s) => {
+      create: async (o) => {
         let r = await fetch(`${e.baseUrl}/api/cron`, {
           method: "POST",
           headers: e.headers,
-          body: JSON.stringify(s),
+          body: JSON.stringify(o),
         });
         if (!r.ok) throw new Error(await r.text());
         return r.json();
       },
-      delete: async (s) => {
-        let r = await fetch(`${e.baseUrl}/api/cron/${s}`, {
+      delete: async (o) => {
+        let r = await fetch(`${e.baseUrl}/api/cron/${o}`, {
           method: "DELETE",
           headers: e.headers,
         });
@@ -327,10 +450,10 @@ var k = class {
   get webhookLogs() {
     let e = this;
     return {
-      list: async (s = {}) => {
+      list: async (o = {}) => {
         let r = new URLSearchParams();
-        Object.entries(s).forEach(([o, a]) => {
-          a !== void 0 && a !== "" && r.append(o, a.toString());
+        Object.entries(o).forEach(([s, n]) => {
+          n !== void 0 && n !== "" && r.append(s, n.toString());
         });
         let t = await fetch(`${e.baseUrl}/api/webhooks/logs?${r.toString()}`, {
           headers: e.headers,
@@ -344,139 +467,139 @@ var k = class {
     let e = this;
     return {
       get: async () => {
-        let s = await fetch(`${e.baseUrl}/api/workflows/stats`, {
+        let o = await fetch(`${e.baseUrl}/api/workflows/stats`, {
           headers: e.headers,
-        });
-        if (!s.ok) throw new Error(await s.text());
-        return s.json();
-      },
-    };
-  }
-  collection(e) {
-    let s = this;
-    return {
-      getList: async (r = 1, t = 30, o = {}) => {
-        let a = new URLSearchParams({ page: String(r), perPage: String(t) });
-        o.filter && a.append("filter", o.filter),
-          o.expand && a.append("expand", o.expand),
-          o.sort && a.append("sort", o.sort);
-        let n = await fetch(
-          `${s.baseUrl}/api/collections/${e}/records?${a.toString()}`,
-          { headers: s.headers },
-        );
-        if (!n.ok) throw new Error(await n.text());
-        return n.json();
-      },
-      getOne: async (r, t = {}) => {
-        let o = new URLSearchParams();
-        t.expand && o.append("expand", t.expand);
-        let a = await fetch(
-          `${s.baseUrl}/api/collections/${e}/records/${r}?${o.toString()}`,
-          { headers: s.headers },
-        );
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
-      },
-      search: async (r, t = {}) => {
-        let o = new URLSearchParams({ q: r });
-        t.page && o.append("page", String(t.page)),
-          t.perPage && o.append("perPage", String(t.perPage)),
-          t.expand && o.append("expand", t.expand),
-          t.snippet && o.append("snippet", "true");
-        let a = await fetch(
-          `${s.baseUrl}/api/collections/${e}/records/search?${o.toString()}`,
-          { headers: s.headers },
-        );
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
-      },
-      getView: async (r, t = {}) => {
-        let o = new URLSearchParams();
-        t.page && o.append("page", String(t.page)),
-          t.perPage && o.append("perPage", String(t.perPage)),
-          t.expand && o.append("expand", t.expand),
-          t.filter && o.append("filter", t.filter),
-          t.sort && o.append("sort", t.sort);
-        let a = await fetch(
-          `${s.baseUrl}/api/collections/${e}/records/views/${r}?${o.toString()}`,
-          { headers: s.headers },
-        );
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
-      },
-      create: async (r) => {
-        let t = r instanceof FormData, o = { ...s.headers };
-        t && delete o["Content-Type"], console.log("-0--->", r);
-        let a = await fetch(`${s.baseUrl}/api/collections/${e}/records`, {
-          method: "POST",
-          headers: o,
-          body: t ? r : JSON.stringify(r),
-        });
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
-      },
-      update: async (r, t) => {
-        let o = t instanceof FormData, a = { ...s.headers };
-        o && delete a["Content-Type"];
-        let n = await fetch(`${s.baseUrl}/api/collections/${e}/records/${r}`, {
-          method: "PATCH",
-          headers: a,
-          body: o ? t : JSON.stringify(t),
-        });
-        if (!n.ok) throw new Error(await n.text());
-        return n.json();
-      },
-      bulkUpdate: async (r, t) => {
-        let o = await fetch(`${s.baseUrl}/api/collections/${e}/records/bulk`, {
-          method: "PATCH",
-          headers: s.headers,
-          body: JSON.stringify({ ids: r, data: t }),
         });
         if (!o.ok) throw new Error(await o.text());
         return o.json();
       },
+    };
+  }
+  collection(e) {
+    let o = this;
+    return {
+      getList: async (r = 1, t = 30, s = {}) => {
+        let n = new URLSearchParams({ page: String(r), perPage: String(t) });
+        s.filter && n.append("filter", s.filter),
+          s.expand && n.append("expand", s.expand),
+          s.sort && n.append("sort", s.sort);
+        let i = await fetch(
+          `${o.baseUrl}/api/collections/${e}/records?${n.toString()}`,
+          { headers: o.headers },
+        );
+        if (!i.ok) throw new Error(await i.text());
+        return i.json();
+      },
+      getOne: async (r, t = {}) => {
+        let s = new URLSearchParams();
+        t.expand && s.append("expand", t.expand);
+        let n = await fetch(
+          `${o.baseUrl}/api/collections/${e}/records/${r}?${s.toString()}`,
+          { headers: o.headers },
+        );
+        if (!n.ok) throw new Error(await n.text());
+        return n.json();
+      },
+      search: async (r, t = {}) => {
+        let s = new URLSearchParams({ q: r });
+        t.page && s.append("page", String(t.page)),
+          t.perPage && s.append("perPage", String(t.perPage)),
+          t.expand && s.append("expand", t.expand),
+          t.snippet && s.append("snippet", "true");
+        let n = await fetch(
+          `${o.baseUrl}/api/collections/${e}/records/search?${s.toString()}`,
+          { headers: o.headers },
+        );
+        if (!n.ok) throw new Error(await n.text());
+        return n.json();
+      },
+      getView: async (r, t = {}) => {
+        let s = new URLSearchParams();
+        t.page && s.append("page", String(t.page)),
+          t.perPage && s.append("perPage", String(t.perPage)),
+          t.expand && s.append("expand", t.expand),
+          t.filter && s.append("filter", t.filter),
+          t.sort && s.append("sort", t.sort);
+        let n = await fetch(
+          `${o.baseUrl}/api/collections/${e}/records/views/${r}?${s.toString()}`,
+          { headers: o.headers },
+        );
+        if (!n.ok) throw new Error(await n.text());
+        return n.json();
+      },
+      create: async (r) => {
+        let t = r instanceof FormData, s = { ...o.headers };
+        t && delete s["Content-Type"];
+        let n = await fetch(`${o.baseUrl}/api/collections/${e}/records`, {
+          method: "POST",
+          headers: s,
+          body: t ? r : JSON.stringify(r),
+        });
+        if (!n.ok) throw new Error(await n.text());
+        return n.json();
+      },
+      update: async (r, t) => {
+        let s = t instanceof FormData, n = { ...o.headers };
+        s && delete n["Content-Type"];
+        let i = await fetch(`${o.baseUrl}/api/collections/${e}/records/${r}`, {
+          method: "PATCH",
+          headers: n,
+          body: s ? t : JSON.stringify(t),
+        });
+        if (!i.ok) throw new Error(await i.text());
+        return i.json();
+      },
+      bulkUpdate: async (r, t) => {
+        let s = await fetch(`${o.baseUrl}/api/collections/${e}/records/bulk`, {
+          method: "PATCH",
+          headers: o.headers,
+          body: JSON.stringify({ ids: r, data: t }),
+        });
+        if (!s.ok) throw new Error(await s.text());
+        return s.json();
+      },
       delete: async (r) => {
-        let t = await fetch(`${s.baseUrl}/api/collections/${e}/records/${r}`, {
+        let t = await fetch(`${o.baseUrl}/api/collections/${e}/records/${r}`, {
           method: "DELETE",
-          headers: s.headers,
+          headers: o.headers,
         });
         if (!t.ok) throw new Error(await t.text());
         return await t.text(), !0;
       },
       bulkDelete: async (r) => {
-        let t = await fetch(`${s.baseUrl}/api/collections/${e}/records/bulk`, {
+        let t = await fetch(`${o.baseUrl}/api/collections/${e}/records/bulk`, {
           method: "DELETE",
-          headers: s.headers,
+          headers: o.headers,
           body: JSON.stringify({ ids: r }),
         });
         if (!t.ok) throw new Error(await t.text());
         return t.json();
       },
       authWithPassword: async (r, t) => {
-        if (e === "_superusers") return s.admins.authWithPassword(r, t);
-        let o = await fetch(
-          `${s.baseUrl}/api/collections/${e}/auth-with-password`,
+        if (e === "_superusers") return o.admins.authWithPassword(r, t);
+        let s = await fetch(
+          `${o.baseUrl}/api/collections/${e}/auth-with-password`,
           {
             method: "POST",
-            headers: s.headers,
+            headers: o.headers,
             body: JSON.stringify({ identity: r, password: t }),
           },
         );
-        if (!o.ok) throw new Error(await o.text());
-        let a = await o.json();
-        return s.setToken(a.token), a;
+        if (!s.ok) throw new Error(await s.text());
+        let n = await s.json();
+        return o.setToken(n.token), n;
       },
       subscribe: (
         r,
         t,
-      ) => (s.subscriptions.set(e, { callback: r, options: t }),
-        s.connectRealtime(),
-        s.realtimeSocket?.readyState === 1 &&
-        s.realtimeSocket.send(
+      ) => (o.subscriptions.set(e, { callback: r, options: t }),
+        o.connectRealtime(),
+        o.realtimeSocket?.readyState === 1 &&
+        o.realtimeSocket.send(
           JSON.stringify({ type: "SUBSCRIBE", collection: e, ...t }),
         ),
         () => {
-          s.subscriptions.delete(e);
+          o.subscriptions.delete(e);
         }),
     };
   }
@@ -492,29 +615,29 @@ var k = class {
       (this.token ? `&auth=${this.token}` : "");
     this.realtimeSocket = new WebSocket(e),
       this.realtimeSocket.onopen = () => {
-        this.subscriptions.forEach((s, r) => {
+        this.subscriptions.forEach((o, r) => {
           this.realtimeSocket?.send(
-            JSON.stringify({ type: "SUBSCRIBE", collection: r, ...s.options }),
+            JSON.stringify({ type: "SUBSCRIBE", collection: r, ...o.options }),
           );
         });
       },
-      this.realtimeSocket.onmessage = (s) => {
-        let r = JSON.parse(s.data), t = this.subscriptions.get(r.collection);
-        !t || !r.events || r.events.forEach((o) => {
+      this.realtimeSocket.onmessage = (o) => {
+        let r = JSON.parse(o.data), t = this.subscriptions.get(r.collection);
+        !t || !r.events || r.events.forEach((s) => {
           try {
-            t.callback(o.data),
-              t.options?.group || (t.options = { ...t.options, lastId: o.id }),
-              o.ackId && t.options?.group &&
+            t.callback(s.data),
+              t.options?.group || (t.options = { ...t.options, lastId: s.id }),
+              s.ackId && t.options?.group &&
               this.realtimeSocket?.send(
                 JSON.stringify({
                   type: "ACK",
                   collection: r.collection,
-                  id: o.ackId,
+                  id: s.ackId,
                   group: t.options.group,
                 }),
               );
-          } catch (a) {
-            console.error("Error handling realtime event:", a);
+          } catch (n) {
+            console.error("Error handling realtime event:", n);
           }
         });
       },
@@ -524,21 +647,21 @@ var k = class {
       };
   }
   get migrations() {
-    let e = this, s = "_migrations";
+    let e = this, o = "_migrations";
     return {
-      getList: async (r = 1, t = 500, o = {}) => {
-        let a = new URLSearchParams({ page: String(r), perPage: String(t) });
-        o.filter && a.append("filter", o.filter),
-          o.sort && a.append("sort", o.sort);
-        let n = await fetch(
-          `${e.baseUrl}/api/collections/${s}/records?${a.toString()}`,
+      getList: async (r = 1, t = 500, s = {}) => {
+        let n = new URLSearchParams({ page: String(r), perPage: String(t) });
+        s.filter && n.append("filter", s.filter),
+          s.sort && n.append("sort", s.sort);
+        let i = await fetch(
+          `${e.baseUrl}/api/collections/${o}/records?${n.toString()}`,
           { headers: e.adminHeaders },
         );
-        if (!n.ok) throw new Error(await n.text());
-        return n.json();
+        if (!i.ok) throw new Error(await i.text());
+        return i.json();
       },
       create: async (r) => {
-        let t = await fetch(`${e.baseUrl}/api/collections/${s}/records`, {
+        let t = await fetch(`${e.baseUrl}/api/collections/${o}/records`, {
           method: "POST",
           headers: e.adminHeaders,
           body: JSON.stringify(r),
@@ -547,7 +670,7 @@ var k = class {
         return t.json();
       },
       delete: async (r) => {
-        let t = await fetch(`${e.baseUrl}/api/collections/${s}/records/${r}`, {
+        let t = await fetch(`${e.baseUrl}/api/collections/${o}/records/${r}`, {
           method: "DELETE",
           headers: e.adminHeaders,
         });
@@ -556,13 +679,13 @@ var k = class {
       },
       run: async (r) => {
         let t = await e.migrations.getList(1, 500),
-          o = new Set(t.items.map((a) => a.name));
-        for (let a of r) {
-          o.has(a.name) ||
-            (console.log(`[Migrations] Applying: ${a.name}`),
-              await a.up(e),
+          s = new Set(t.items.map((n) => n.name));
+        for (let n of r) {
+          s.has(n.name) ||
+            (console.log(`[Migrations] Applying: ${n.name}`),
+              await n.up(e),
               await e.migrations.create({
-                name: a.name,
+                name: n.name,
                 appliedAt: new Date().toISOString(),
                 batch: 1,
               }));
@@ -571,10 +694,10 @@ var k = class {
     };
   }
   get workflow() {
-    let e = this, s = `${e.baseUrl}/api/workflows`;
+    let e = this, o = `${e.baseUrl}/api/workflows`;
     return {
       createRun: async (r) => {
-        let t = await fetch(`${s}/runs`, {
+        let t = await fetch(`${o}/runs`, {
           method: "POST",
           headers: e.headers,
           body: JSON.stringify(r),
@@ -582,21 +705,21 @@ var k = class {
         if (!t.ok) throw new Error(await t.text());
         return t.json();
       },
-      trigger: async (r, t, o = {}) => {
-        let i = { ...w.get(r)?.prototype?.workflowOptions || {}, ...o },
-          l = await e.workflow.createRun({
-            deploymentId: i.deploymentId || "sdk",
+      trigger: async (r, t, s = {}) => {
+        let a = { ...h.get(r)?.prototype?.workflowOptions || {}, ...s },
+          c = await e.workflow.createRun({
+            deploymentId: a.deploymentId || "sdk",
             workflowName: r,
             input: t,
-            ...i,
+            ...a,
           });
         return await e.workflow.queueMessage(`__wkf_workflow_${r}`, {
           type: "workflow_start",
-          runId: l.runId,
+          runId: c.runId,
           workflowName: r,
           input: t,
-        }, { runId: l.runId, idempotencyKey: l.runId }),
-          l;
+        }, { runId: c.runId, idempotencyKey: c.runId }),
+          c;
       },
       resume: async (r) => {
         let t = await e.workflow.getRun(r);
@@ -613,27 +736,27 @@ var k = class {
           t;
       },
       getRun: async (r) => {
-        let t = await fetch(`${s}/runs/${r}`, { headers: e.headers });
+        let t = await fetch(`${o}/runs/${r}`, { headers: e.headers });
         if (!t.ok) throw new Error(await t.text());
         return t.json();
       },
       updateRun: async (r, t) => {
-        let o = await fetch(`${s}/runs/${r}`, {
+        let s = await fetch(`${o}/runs/${r}`, {
           method: "PATCH",
           headers: e.headers,
           body: JSON.stringify(t),
         });
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!s.ok) throw new Error(await s.text());
+        return s.json();
       },
       cancelRun: async (r, t) => {
-        let o = await fetch(`${s}/runs/${r}`, {
+        let s = await fetch(`${o}/runs/${r}`, {
           method: "DELETE",
           headers: e.headers,
           body: JSON.stringify({ reason: t }),
         });
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!s.ok) throw new Error(await s.text());
+        return s.json();
       },
       listRuns: async (r = {}) => {
         let t = new URLSearchParams();
@@ -641,81 +764,81 @@ var k = class {
           r.status && t.append("status", r.status),
           r.limit && t.append("limit", String(r.limit)),
           r.cursor && t.append("cursor", r.cursor);
-        let o = await fetch(`${s}/runs?${t.toString()}`, {
+        let s = await fetch(`${o}/runs?${t.toString()}`, {
           headers: e.headers,
         });
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!s.ok) throw new Error(await s.text());
+        return s.json();
       },
       createStep: async (r, t) => {
-        let o = await fetch(`${s}/steps`, {
+        let s = await fetch(`${o}/steps`, {
           method: "POST",
           headers: e.headers,
           body: JSON.stringify({ runId: r, ...t }),
         });
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!s.ok) throw new Error(await s.text());
+        return s.json();
       },
-      updateStep: async (r, t, o) => {
-        let a = await fetch(`${s}/steps/${r}/${t}`, {
+      updateStep: async (r, t, s) => {
+        let n = await fetch(`${o}/steps/${r}/${t}`, {
           method: "PATCH",
           headers: e.headers,
-          body: JSON.stringify(o),
+          body: JSON.stringify(s),
         });
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
+        if (!n.ok) throw new Error(await n.text());
+        return n.json();
       },
       createEvent: async (r, t) => {
-        let o = await fetch(`${s}/events`, {
+        let s = await fetch(`${o}/events`, {
           method: "POST",
           headers: e.headers,
           body: JSON.stringify({ runId: r, ...t }),
         });
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!s.ok) throw new Error(await s.text());
+        return s.json();
       },
       listEvents: async (r) => {
-        let t = await fetch(`${s}/runs/${r}/events`, { headers: e.headers });
+        let t = await fetch(`${o}/runs/${r}/events`, { headers: e.headers });
         if (!t.ok) throw new Error(await t.text());
         return t.json();
       },
       pollQueue: async (r) => {
-        let t = await fetch(`${s}/queue/${r}`, { headers: e.headers });
+        let t = await fetch(`${o}/queue/${r}`, { headers: e.headers });
         if (!t.ok) throw new Error(await t.text());
-        let o = await t.text();
-        return o ? JSON.parse(o) : null;
+        let s = await t.text();
+        return s ? JSON.parse(s) : null;
       },
-      sendSignal: async (r, t, o, a) => {
-        let n = a || `signal-${t}-${crypto.randomUUID()}`;
+      sendSignal: async (r, t, s, n) => {
+        let i = n || `signal-${t}-${crypto.randomUUID()}`;
         await e.workflow.createEvent(r, {
           eventType: "signal_received",
-          correlationId: n,
-          payload: { name: t, data: o },
+          correlationId: i,
+          payload: { name: t, data: s },
         });
-        let i = await e.workflow.getRun(r);
+        let a = await e.workflow.getRun(r);
         return await e.workflow.queueMessage(
-          `__wkf_workflow_${i.workflowName}`,
+          `__wkf_workflow_${a.workflowName}`,
           {
             type: "signal",
             runId: r,
-            workflowName: i.workflowName,
-            input: i.input,
+            workflowName: a.workflowName,
+            input: a.input,
           },
-          { runId: r, idempotencyKey: `${r}-${n}` },
+          { runId: r, idempotencyKey: `${r}-${i}` },
         ),
           !0;
       },
-      queueMessage: async (r, t, o) => {
-        let a = await fetch(`${s}/queue`, {
+      queueMessage: async (r, t, s) => {
+        let n = await fetch(`${o}/queue`, {
           method: "POST",
           headers: e.headers,
-          body: JSON.stringify({ queueName: r, message: t, opts: o }),
+          body: JSON.stringify({ queueName: r, message: t, opts: s }),
         });
-        if (!a.ok) throw new Error(await a.text());
-        return a.json();
+        if (!n.ok) throw new Error(await n.text());
+        return n.json();
       },
       ack: async (r) => {
-        let t = await fetch(`${s}/queue/ack`, {
+        let t = await fetch(`${o}/queue/ack`, {
           method: "POST",
           headers: e.headers,
           body: JSON.stringify({ messageId: r }),
@@ -724,7 +847,7 @@ var k = class {
         return t.json();
       },
       nack: async (r) => {
-        let t = await fetch(`${s}/queue/nack`, {
+        let t = await fetch(`${o}/queue/nack`, {
           method: "POST",
           headers: e.headers,
           body: JSON.stringify({ messageId: r }),
@@ -733,25 +856,25 @@ var k = class {
         return t.json();
       },
       getJob: async (r) => {
-        let t = await fetch(`${s}/queue/${r}`, { headers: e.headers });
+        let t = await fetch(`${o}/queue/${r}`, { headers: e.headers });
         if (!t.ok) throw new Error(await t.text());
         return t.json();
       },
       getProcessingJobs: async (r) => {
         let t = new URLSearchParams();
         t.append("runId", r), t.append("status", "processing");
-        let o = await fetch(`${s}/queue/jobs?${t.toString()}`, {
+        let s = await fetch(`${o}/queue/jobs?${t.toString()}`, {
           headers: e.headers,
         });
-        if (!o.ok) throw new Error(await o.text());
-        return o.json();
+        if (!s.ok) throw new Error(await s.text());
+        return s.json();
       },
       touch: async (r) => {
         e.workflowSocket?.readyState === 1 &&
           e.workflowSocket.send(
             JSON.stringify({ event: "TOUCH", data: { messageId: r } }),
           );
-        let t = await fetch(`${s}/queue/touch`, {
+        let t = await fetch(`${o}/queue/touch`, {
           method: "POST",
           headers: e.headers,
           body: JSON.stringify({ messageId: r }),
@@ -761,7 +884,7 @@ var k = class {
       },
       hooks: {
         create: async (r) => {
-          let t = await fetch(`${s}/hooks`, {
+          let t = await fetch(`${o}/hooks`, {
             method: "POST",
             headers: e.headers,
             body: JSON.stringify(r),
@@ -770,31 +893,31 @@ var k = class {
           return t.json();
         },
         execute: async (r, t) => {
-          let o = await fetch(`${s}/hooks/${r}`, {
+          let s = await fetch(`${o}/hooks/${r}`, {
             method: "POST",
             headers: e.headers,
             body: JSON.stringify(t),
           });
-          if (!o.ok) throw new Error(await o.text());
-          return o.json();
+          if (!s.ok) throw new Error(await s.text());
+          return s.json();
         },
         get: async (r) => {
-          let t = await fetch(`${s}/hooks/${r}`, { headers: e.headers });
+          let t = await fetch(`${o}/hooks/${r}`, { headers: e.headers });
           if (!t.ok) throw new Error(await t.text());
           return t.json();
         },
         getByToken: async (r) => {
-          let t = await fetch(`${s}/hooks?token=${r}`, { headers: e.headers });
+          let t = await fetch(`${o}/hooks?token=${r}`, { headers: e.headers });
           if (!t.ok) throw new Error(await t.text());
           return t.json();
         },
         list: async (r) => {
-          let t = await fetch(`${s}/hooks?runId=${r}`, { headers: e.headers });
+          let t = await fetch(`${o}/hooks?runId=${r}`, { headers: e.headers });
           if (!t.ok) throw new Error(await t.text());
           return t.json();
         },
         dispose: async (r) => {
-          let t = await fetch(`${s}/hooks/${r}`, {
+          let t = await fetch(`${o}/hooks/${r}`, {
             method: "DELETE",
             headers: e.headers,
           });
@@ -804,22 +927,22 @@ var k = class {
       },
     };
   }
-  async gate(e, s, r) {
+  async gate(e, o, r) {
     let t = {
       method: "POST",
       ...r,
       headers: { ...this.headers, ...r?.headers || {} },
     };
-    return s && (t.body = JSON.stringify(s)),
+    return o && (t.body = JSON.stringify(o)),
       await fetch(`${this.baseUrl}/api/gates/${e}`, t);
   }
 };
-var h = class extends Error {
+var w = class extends Error {
   constructor(e = "Workflow suspended") {
     super(e), this.name = "WorkflowSuspension";
   }
 };
-var d = class {
+var f = class {
   client;
   runId = "";
   workflowName = "unknown";
@@ -838,38 +961,38 @@ var d = class {
     e && (this.client = e);
   }
   async parallel(e) {
-    let s = e.map((a) => a()),
-      r = await Promise.allSettled(s),
+    let o = e.map((n) => n()),
+      r = await Promise.allSettled(o),
       t = null,
-      o = null;
-    for (let a of r) {
-      a.status === "rejected" &&
-        (a.reason instanceof h ? o || (o = a.reason) : t || (t = a.reason));
+      s = null;
+    for (let n of r) {
+      n.status === "rejected" &&
+        (n.reason instanceof w ? s || (s = n.reason) : t || (t = n.reason));
     }
     if (t) throw t;
-    if (o) throw this.isSuspended = !0, o;
-    return r.map((a) => a.value);
+    if (s) throw this.isSuspended = !0, s;
+    return r.map((n) => n.value);
   }
   getSequentialId(e) {
     return `${e}-${this.callCounter++}`;
   }
   async sleep(e) {
-    let s = this.getSequentialId("sleep");
-    if (this.completedSteps.has(s)) {
+    let o = this.getSequentialId("sleep");
+    if (this.completedSteps.has(o)) {
       console.log(
-        `[Workflow ${this.workflowName}] Sleep ${s} already completed, skipping`,
+        `[Workflow ${this.workflowName}] Sleep ${o} already completed, skipping`,
       );
       return;
     }
     if (!this.runId) {
       throw new Error("Cannot sleep outside of a workflow context.");
     }
-    if (this.emittedEvents.has(s)) {
+    if (this.emittedEvents.has(o)) {
       throw console.log(
-        `[Workflow ${this.workflowName}] Sleep ${s} already emitted, suspending`,
+        `[Workflow ${this.workflowName}] Sleep ${o} already emitted, suspending`,
       ),
         this.isSuspended = !0,
-        new h(`Sleeping for ${s}`);
+        new w(`Sleeping for ${o}`);
     }
     let r = 0;
     if (typeof e == "string") {
@@ -883,24 +1006,24 @@ var d = class {
     let t = new Date(Date.now() + r);
     throw await this.client.workflow.createEvent(this.runId, {
       eventType: "wait_created",
-      correlationId: s,
+      correlationId: o,
       payload: { duration: r, resumeAt: t.toISOString() },
     }),
-      this.emittedEvents.add(s),
+      this.emittedEvents.add(o),
       this.isSuspended = !0,
-      new h(`Sleeping for ${r}ms`);
+      new w(`Sleeping for ${r}ms`);
   }
   async waitForSignal(e) {
-    let s = this.getSequentialId(`signal-${e}`);
-    if (this.history.has(s)) {
-      let t = this.history.get(s);
+    let o = this.getSequentialId(`signal-${e}`);
+    if (this.history.has(o)) {
+      let t = this.history.get(o);
       console.log(
-        `[Workflow ${this.workflowName}] Signal ${s} replayed from history`,
+        `[Workflow ${this.workflowName}] Signal ${o} replayed from history`,
       );
-      let o = this.signalQueues.get(e);
-      if (o) {
-        let a = this.signalCursors.get(e) || 0;
-        a < o.length && o[a] === t && this.signalCursors.set(e, a + 1);
+      let s = this.signalQueues.get(e);
+      if (s) {
+        let n = this.signalCursors.get(e) || 0;
+        n < s.length && s[n] === t && this.signalCursors.set(e, n + 1);
       }
       return t;
     }
@@ -908,53 +1031,53 @@ var d = class {
     if (r) {
       let t = this.signalCursors.get(e) || 0;
       if (t < r.length) {
-        let o = r[t];
+        let s = r[t];
         return console.log(
-          `[Workflow ${this.workflowName}] Signal ${s} pulled from signal queue at cursor ${t}`,
+          `[Workflow ${this.workflowName}] Signal ${o} pulled from signal queue at cursor ${t}`,
         ),
           this.signalCursors.set(e, t + 1),
-          this.history.set(s, o),
-          o;
+          this.history.set(o, s),
+          s;
       }
     }
     throw this.runId
-      ? this.emittedEvents.has(s)
+      ? this.emittedEvents.has(o)
         ? (console.log(
-          `[Workflow ${this.workflowName}] Signal ${s} already waiting, suspending`,
+          `[Workflow ${this.workflowName}] Signal ${o} already waiting, suspending`,
         ),
           this.isSuspended = !0,
-          new h(`Waiting for signal: ${e}`))
+          new w(`Waiting for signal: ${e}`))
         : (await this.client.workflow.createEvent(this.runId, {
           eventType: "signal_waiting",
-          correlationId: s,
+          correlationId: o,
           payload: { name: e },
         }),
-          this.emittedEvents.add(s),
+          this.emittedEvents.add(o),
           this.isSuspended = !0,
-          new h(`Waiting for signal: ${e}`))
+          new w(`Waiting for signal: ${e}`))
       : new Error("Cannot wait for signal outside of a workflow context.");
   }
   async runRollback(e) {
-    let s = {}, r = [...this.rollbackStack];
+    let o = {}, r = [...this.rollbackStack];
     for (; r.length > 0;) {
-      let t = r.pop(), o = this.history.get(t);
-      if (typeof o == "function") {
+      let t = r.pop(), s = this.history.get(t);
+      if (typeof s == "function") {
         try {
-          let a = await o(e, s);
-          s[t] = a;
-        } catch (a) {
-          if (a.name === "StopRollback") break;
-          console.error(`Rollback function ${t} failed:`, a.message);
+          let n = await s(e, o);
+          o[t] = n;
+        } catch (n) {
+          if (n.name === "StopRollback") break;
+          console.error(`Rollback function ${t} failed:`, n.message);
         }
       } else {
-        let a = t;
-        if (typeof this[a] == "function") {
+        let n = t;
+        if (typeof this[n] == "function") {
           try {
-            let n = await this[a](e, s);
-            s[a] = n;
-          } catch (n) {
-            if (n.name === "StopRollback") break;
-            console.error(`Rollback method ${a} failed:`, n.message);
+            let i = await this[n](e, o);
+            o[n] = i;
+          } catch (i) {
+            if (i.name === "StopRollback") break;
+            console.error(`Rollback method ${n} failed:`, i.message);
           }
         }
       }
@@ -971,7 +1094,7 @@ var d = class {
       this.signalCursors.clear(),
       this.callCounter = 0,
       this.isSuspended = !1;
-    let s = new Map();
+    let o = new Map();
     for (let r of e) {
       let t = r.payload || {};
       switch (
@@ -986,11 +1109,11 @@ var d = class {
           break;
         case "signal_received":
           if (t.name) {
-            let o = t.name;
-            this.signalQueues.has(o) || this.signalQueues.set(o, []),
-              this.signalQueues.get(o).push(t.data);
-            let a = s.get(o) || 0, n = `signal-${o}-${a}`;
-            this.history.set(n, t.data), s.set(o, a + 1);
+            let s = t.name;
+            this.signalQueues.has(s) || this.signalQueues.set(s, []),
+              this.signalQueues.get(s).push(t.data);
+            let n = o.get(s) || 0, i = `signal-${s}-${n}`;
+            this.history.set(i, t.data), o.set(s, n + 1);
           }
           break;
         case "rollback_registered":
@@ -1002,8 +1125,8 @@ var d = class {
       }
     }
   }
-  async executeStep(e, s, r, t = {}, o) {
-    if (!this.runId) return s.apply(this, r);
+  async executeStep(e, o, r, t = {}, s) {
+    if (!this.runId) return o.apply(this, r);
     if (this.invokedSteps.has(e)) {
       throw new Error(
         `Duplicate step ID detected: "${e}". Each step within a workflow must have a unique ID.`,
@@ -1016,292 +1139,356 @@ var d = class {
         this.history.get(e);
     }
     if (t.rollback) {
-      for (let i of t.rollback) {
-        let l = `${e}-rb-${i}`;
-        this.history.has(l) ||
+      for (let a of t.rollback) {
+        let c = `${e}-rb-${a}`;
+        this.history.has(c) ||
           (await this.client.workflow.createEvent(this.runId, {
             eventType: "rollback_registered",
-            correlationId: l,
-            payload: { method: i },
+            correlationId: c,
+            payload: { method: a },
           }),
-            this.rollbackStack.push(i));
+            this.rollbackStack.push(a));
       }
     }
     if (t.rollbackFn) {
-      let i = `${e}-rbfn`;
-      this.history.has(i) ||
+      let a = `${e}-rbfn`;
+      this.history.has(a) ||
         (await this.client.workflow.createEvent(this.runId, {
           eventType: "rollback_registered",
-          correlationId: i,
+          correlationId: a,
           payload: { isFunction: !0 },
         }),
-          this.rollbackStack.push(i),
-          this.history.set(i, t.rollbackFn));
+          this.rollbackStack.push(a),
+          this.history.set(a, t.rollbackFn));
     }
-    let a = t.retries || 0, n = 0;
+    let n = t.retries || 0, i = 0;
     for (
       this.stepAttempts.has(e) || this.stepAttempts.set(e, 0),
-        n = this.stepAttempts.get(e);;
+        i = this.stepAttempts.get(e);;
     ) {
       try {
         this.emittedEvents.has(e) ||
           (console.log(
-            `[Workflow ${this.workflowName}] Step ${e} starting (Attempt ${n})`,
+            `[Workflow ${this.workflowName}] Step ${e} starting (Attempt ${i})`,
           ),
             await this.client.workflow.createEvent(this.runId, {
               eventType: "step_started",
               correlationId: e,
-              payload: { attempt: n, name: o || e },
+              payload: { attempt: i, name: s || e },
             }),
             this.emittedEvents.add(e));
-        let i = await s.apply(this, r);
+        let a = await o.apply(this, r);
         return console.log(
           `[Workflow ${this.workflowName}] Step ${e} completed`,
         ),
           await this.client.workflow.createEvent(this.runId, {
             eventType: "step_completed",
             correlationId: e,
-            payload: { output: i },
+            payload: { output: a },
           }),
           this.completedSteps.add(e),
-          this.history.set(e, i),
-          i;
-      } catch (i) {
-        if (n < a) {
-          n++,
-            this.stepAttempts.set(e, n),
+          this.history.set(e, a),
+          a;
+      } catch (a) {
+        if (i < n) {
+          i++,
+            this.stepAttempts.set(e, i),
             await this.client.workflow.createEvent(this.runId, {
               eventType: "step_retrying",
               correlationId: e,
-              payload: { error: i.message, attempt: n },
+              payload: { error: a.message, attempt: i },
             }),
-            await new Promise((l) => setTimeout(l, 1e3 * n));
+            await new Promise((c) => setTimeout(c, 1e3 * i));
           continue;
         }
         throw await this.client.workflow.createEvent(this.runId, {
           eventType: "step_failed",
           correlationId: e,
-          payload: { error: i.message, attempt: n },
+          payload: { error: a.message, attempt: i },
         }),
-          i;
+          a;
       }
     }
   }
 };
-function R(c, e = {}) {
-  return function (s) {
-    w.set(c, s), s.prototype.workflowName = c, s.prototype.workflowOptions = e;
-    let r = s.prototype.run;
-    r && (s.prototype.run = async function (...t) {
-      let o = this;
-      if (!o.client) throw new Error("Workflow needs a RocketBaseClient.");
-      if (!o.runId) {
-        let a = await o.client.workflow.trigger(c, t, e);
-        o.runId = a.runId;
+function T(l, e = {}) {
+  return function (o) {
+    h.set(l, o), o.prototype.workflowName = l, o.prototype.workflowOptions = e;
+    let r = o.prototype.run;
+    r && (o.prototype.run = async function (...t) {
+      let s = this;
+      if (!s.client) throw new Error("Workflow needs a RocketBaseClient.");
+      if (!s.runId) {
+        let n = await s.client.workflow.trigger(l, t, e);
+        s.runId = n.runId;
       }
-      await o.client.workflow.updateRun(o.runId, { status: "running" });
+      await s.client.workflow.updateRun(s.runId, { status: "running" });
       try {
-        let a = await r.apply(o, t);
-        return o.isSuspended ||
-          await o.client.workflow.updateRun(o.runId, {
+        let n = await r.apply(s, t);
+        return s.isSuspended ||
+          await s.client.workflow.updateRun(s.runId, {
             status: "completed",
-            output: a,
+            output: n,
           }),
-          a;
-      } catch (a) {
-        if (a instanceof h) return;
-        console.error(`[Workflow ${c}] Failed:`, a.message);
+          n;
+      } catch (n) {
+        if (n instanceof w) return;
+        console.error(`[Workflow ${l}] Failed:`, n.message);
         try {
-          await o.runRollback(a);
-        } catch (n) {
-          console.error(`[Workflow ${c}] Rollback failed:`, n.message);
+          await s.runRollback(n);
+        } catch (i) {
+          console.error(`[Workflow ${l}] Rollback failed:`, i.message);
         }
-        throw await o.client.workflow.updateRun(o.runId, {
+        throw await s.client.workflow.updateRun(s.runId, {
           status: "failed",
-          error: { message: a.message, stack: a.stack },
+          error: { message: n.message, stack: n.stack },
         }),
-          a;
+          n;
       }
     });
   };
 }
-function U(c, e = {}) {
-  return function (s, r, t) {
-    let o = t.value;
-    t.value = async function (...a) {
-      return this.executeStep(c, o, a, e);
+function N(l, e = {}) {
+  return function (o, r, t) {
+    let s = t.value;
+    t.value = async function (...n) {
+      return this.executeStep(l, s, n, e);
     };
   };
 }
 var g = class {
   client;
   active;
+  ready;
   workflowNames;
   stopCallback;
   activeJobs;
   unsubscribers;
+  pendingSubscriptions;
+  confirmedSubscriptions;
   constructor(e) {
     this.client = e,
       this.active = !1,
+      this.ready = !1,
       this.workflowNames = new Set(),
       this.stopCallback = null,
       this.activeJobs = new Set(),
-      this.unsubscribers = new Map();
+      this.unsubscribers = new Map(),
+      this.pendingSubscriptions = new Map(),
+      this.confirmedSubscriptions = new Set();
   }
-  start(e, s = {}) {
-    this.active = !0;
+  start(e, o = {}) {
+    this.active = !0, this.ready = !1;
     let r = Array.isArray(e) ? e : [e];
+    console.log(`[Worker] Starting worker for workflows: ${r.join(", ")}`);
     for (let t of r) {
       this.workflowNames.add(t);
-      let o = this.client.subscribeWorkflow(t, (a) => {
-        if (!this.active) return;
-        let n = this.processJob(a);
-        this.activeJobs.add(n), n.finally(() => this.activeJobs.delete(n));
+      let s = this.client.subscribeWorkflow(t, (n) => {
+        if (!this.active) {
+          console.log(`[Worker] Worker is not active, ignoring job ${n.id}`);
+          return;
+        }
+        if (!this.ready) {
+          console.log(`[Worker] Worker is not ready yet, ignoring job ${n.id}`);
+          return;
+        }
+        let i = this.processJob(n);
+        this.activeJobs.add(i), i.finally(() => this.activeJobs.delete(i));
       });
-      this.unsubscribers.set(t, o),
-        s.resume &&
-        this.resumePending(t).catch((a) =>
-          console.error(`[Worker ${t}] Resume failed:`, a)
-        );
+      this.unsubscribers.set(t, s);
     }
-    return new Promise((t) => {
-      this.stopCallback = t;
-    });
+    return this.client.waitForWorkflowReady().then(() => {
+      console.log(
+        `[Worker] Worker is now ready and accepting jobs for workflows: ${
+          Array.from(this.workflowNames).join(", ")
+        }`,
+      ), this.ready = !0;
+    }).catch((t) => {
+      console.error("[Worker] Failed to reach ready state:", t);
+    }),
+      this.pollJobsOnStartup(Array.from(this.workflowNames)).catch((t) => {
+        console.error("[Worker] Startup polling failed:", t);
+      }),
+      new Promise((t) => {
+        this.stopCallback = t;
+      });
   }
   async resumePending(e) {
-    let s = await this.client.workflow.listRuns({
-        workflowName: e,
-        status: "pending",
-      }),
-      r = await this.client.workflow.listRuns({
-        workflowName: e,
-        status: "running",
-      }),
-      t = [...s.items || s.data || [], ...r.items || r.data || []];
-    console.log(`[Worker ${e}] Resuming ${t.length} runs`);
-    for (let o of t) await this.client.workflow.resume(o.runId);
+    console.log(`[Worker ${e}] Polling for pending and running runs...`);
+    try {
+      let o = await this.client.workflow.listRuns({
+          workflowName: e,
+          status: "pending",
+        }),
+        r = await this.client.workflow.listRuns({
+          workflowName: e,
+          status: "running",
+        }),
+        t = [...o.items || o.data || [], ...r.items || r.data || []];
+      console.log(`[Worker ${e}] Found ${t.length} runs to resume`);
+      let s = 0;
+      for (let n of t) {
+        try {
+          await this.client.workflow.resume(n.runId),
+            s++,
+            console.log(
+              `[Worker ${e}] Resumed run ${n.runId} (status: ${n.status})`,
+            );
+        } catch (i) {
+          console.error(
+            `[Worker ${e}] Failed to resume run ${n.runId}:`,
+            i instanceof Error ? i.message : String(i),
+          );
+        }
+      }
+      console.log(`[Worker ${e}] Successfully resumed ${s}/${t.length} runs`);
+    } catch (o) {
+      throw console.error(
+        `[Worker ${e}] Error polling for pending runs:`,
+        o instanceof Error ? o.message : String(o),
+      ),
+        o;
+    }
+  }
+  async pollJobsOnStartup(e) {
+    console.log(
+      `[Worker] Polling for jobs on startup for workflows: ${e.join(", ")}`,
+    );
+    for (let o of e) {
+      try {
+        await this.resumePending(o);
+      } catch (r) {
+        console.error(`[Worker] Startup polling failed for workflow ${o}:`, r);
+      }
+    }
+    console.log("[Worker] Startup polling completed");
   }
   async stop() {
-    this.active = !1;
+    console.log("[Worker] Stopping worker..."),
+      this.active = !1,
+      this.ready = !1;
     for (let e of this.unsubscribers.values()) e();
     this.unsubscribers.clear(),
+      this.confirmedSubscriptions.clear(),
+      this.pendingSubscriptions.clear(),
       this.activeJobs.size > 0 &&
       (console.log(
         `[Worker] Waiting for ${this.activeJobs.size} jobs to complete...`,
       ),
         await Promise.allSettled(this.activeJobs)),
+      console.log("[Worker] Worker stopped"),
       this.stopCallback && (this.stopCallback(), this.stopCallback = null);
   }
   async processJob(e) {
-    let s = e.data.workflowName || "unknown";
-    console.log(`[Worker ${s}] Processing job ${e.id}`);
+    let o = e.data.workflowName || "unknown";
+    console.log(`[Worker ${o}] Processing job ${e.id}`);
     let { runId: r, input: t } = e.data,
-      o = setInterval(async () => {
+      s = setInterval(async () => {
         try {
           await this.client.workflow.touch(e.id);
         } catch {
-          console.warn(`[Worker ${s}] Heartbeat failed for job ${e.id}`);
+          console.warn(`[Worker ${o}] Heartbeat failed for job ${e.id}`);
         }
       }, 5e3);
     if (e.data.workflowName && !this.workflowNames.has(e.data.workflowName)) {
       console.warn(
         `[Worker] Received job for ${e.data.workflowName}, but not registered to handle it. Ignoring.`,
       ),
-        clearInterval(o),
+        clearInterval(s),
         await this.client.workflow.nack(e.id);
       return;
     }
     try {
-      let [a, n] = await Promise.all([
+      let [n, i] = await Promise.all([
           this.client.workflow.getRun(r),
           this.client.workflow.listEvents(r),
         ]),
-        i = w.get(s);
-      if (!i) {
+        a = h.get(o);
+      if (!a) {
         console.error(
-          `[Worker ${s}] Workflow class not found in registry. Registered:`,
-          Array.from(w.keys()),
+          `[Worker ${o}] Workflow class not found in registry. Registered:`,
+          Array.from(h.keys()),
         ),
-          clearInterval(o),
+          clearInterval(s),
           await this.client.workflow.nack(e.id);
         return;
       }
-      let l = new i(this.client);
-      l.runId = r, l.rebuildState(n);
-      let S = a.executionTimeout || 31536e6,
-        f,
+      let c = new a(this.client);
+      c.runId = r, c.rebuildState(i);
+      let S = n.executionTimeout || 31536e6,
+        d,
         b = new Promise((E, $) => {
-          f = setTimeout(
+          d = setTimeout(
             () => $(new Error("CircuitBreaker: Execution timeout")),
             S,
           );
         });
       try {
-        await Promise.race([l.run(...t || []), b]);
+        await Promise.race([c.run(...t || []), b]);
       } finally {
-        f && clearTimeout(f);
+        d && clearTimeout(d);
       }
-      l.isSuspended ||
-      (console.log(`[Worker ${s}] Job ${e.id} completed, updating run status`),
+      c.isSuspended ||
+      (console.log(`[Worker ${o}] Job ${e.id} completed, updating run status`),
         await this.client.workflow.updateRun(r, { status: "completed" })),
-        clearInterval(o),
+        clearInterval(s),
         await this.client.workflow.ack(e.id),
-        l.isSuspended
-          ? console.log(`[Worker ${s}] Job ${e.id} suspended`)
-          : console.log(`[Worker ${s}] Job ${e.id} completed`);
-    } catch (a) {
-      if (clearInterval(o), a instanceof h) {
+        c.isSuspended
+          ? console.log(`[Worker ${o}] Job ${e.id} suspended`)
+          : console.log(`[Worker ${o}] Job ${e.id} completed`);
+    } catch (n) {
+      if (clearInterval(s), n instanceof w) {
         await this.client.workflow.ack(e.id),
-          console.log(`[Worker ${s}] Job ${e.id} suspended`);
+          console.log(`[Worker ${o}] Job ${e.id} suspended`);
         return;
       }
-      let n = a instanceof Error ? a.message : String(a);
+      let i = n instanceof Error ? n.message : String(n);
       if (
-        console.error(`[Worker ${s}] Job ${e.id} failed:`, n),
-          n === "CircuitBreaker: Execution timeout"
+        console.error(`[Worker ${o}] Job ${e.id} failed:`, i),
+          i === "CircuitBreaker: Execution timeout"
       ) {
         try {
           await this.client.workflow.updateRun(r, {
             status: "failed",
-            error: { message: n },
+            error: { message: i },
           });
-        } catch (i) {
-          console.error(`[Worker ${s}] Failed to update run status`, i);
+        } catch (a) {
+          console.error(`[Worker ${o}] Failed to update run status`, a);
         }
       }
       await this.client.workflow.ack(e.id);
     }
   }
 };
-var m = class extends Error {
+var y = class extends Error {
   constructor(e = "Rollback stopped") {
     super(e), this.name = "StopRollback";
   }
 };
 var u,
-  y = globalThis.AsyncLocalStorage ||
+  m = globalThis.AsyncLocalStorage ||
     (await import("node:async_hooks").catch(() => ({}))).AsyncLocalStorage;
-if (y) {
-  let c = new y();
-  u = { run: (e, s) => c.run(e, s), getStore: () => c.getStore() };
+if (m) {
+  let l = new m();
+  u = { run: (e, o) => l.run(e, o), getStore: () => l.getStore() };
 } else {
-  let c = null;
+  let l = null;
   u = {
-    run: (e, s) => {
-      let r = c;
-      c = e;
+    run: (e, o) => {
+      let r = l;
+      l = e;
       try {
-        let t = s();
+        let t = o();
         return t instanceof Promise
           ? t.finally(() => {
-            c = r;
+            l = r;
           })
-          : (c = r, t);
+          : (l = r, t);
       } catch (t) {
-        throw c = r, t;
+        throw l = r, t;
       }
     },
-    getStore: () => c,
+    getStore: () => l,
   },
     typeof window < "u" &&
     console.warn(
@@ -1309,84 +1496,84 @@ if (y) {
     );
 }
 var p = u;
-function B(c, e = {}) {
+function q(l, e = {}) {
   return {
-    run: (s) => {
-      let r = class extends d {
-        static workflowName = c;
-        workflowName = c;
+    run: (o) => {
+      let r = class extends f {
+        static workflowName = l;
+        workflowName = l;
         workflowOptions = e;
-        async run(...o) {
-          let a = this;
+        async run(...s) {
+          let n = this;
           return await p.run(this, async () => {
             try {
-              return await s.call(a, a, ...o);
-            } catch (n) {
-              throw n;
+              return await o.call(n, n, ...s);
+            } catch (i) {
+              throw i;
             }
           });
         }
       };
-      r.prototype.workflowOptions = e, w.set(c, r);
+      r.prototype.workflowOptions = e, h.set(l, r);
       let t = r.prototype.run;
-      return r.prototype.run = async function (...o) {
-        let a = this;
-        if (!a.client) throw new Error("Workflow needs a RocketBaseClient.");
-        if (!a.runId) {
-          let n = await a.client.workflow.trigger(c, o, e);
-          a.runId = n.runId;
+      return r.prototype.run = async function (...s) {
+        let n = this;
+        if (!n.client) throw new Error("Workflow needs a RocketBaseClient.");
+        if (!n.runId) {
+          let i = await n.client.workflow.trigger(l, s, e);
+          n.runId = i.runId;
         }
-        await a.client.workflow.updateRun(a.runId, { status: "running" });
+        await n.client.workflow.updateRun(n.runId, { status: "running" });
         try {
-          let n = await t.apply(a, o);
-          return a.isSuspended ||
-            await a.client.workflow.updateRun(a.runId, {
+          let i = await t.apply(n, s);
+          return n.isSuspended ||
+            await n.client.workflow.updateRun(n.runId, {
               status: "completed",
-              output: n,
+              output: i,
             }),
-            n;
-        } catch (n) {
-          if (n instanceof h) return;
-          console.error(`[Workflow ${c}] Failed:`, n.message);
+            i;
+        } catch (i) {
+          if (i instanceof w) return;
+          console.error(`[Workflow ${l}] Failed:`, i.message);
           try {
-            await a.runRollback(n);
-          } catch (i) {
-            console.error(`[Workflow ${c}] Rollback failed:`, i.message);
+            await n.runRollback(i);
+          } catch (a) {
+            console.error(`[Workflow ${l}] Rollback failed:`, a.message);
           }
-          throw await a.client.workflow.updateRun(a.runId, {
+          throw await n.client.workflow.updateRun(n.runId, {
             status: "failed",
-            error: { message: n.message, stack: n.stack },
+            error: { message: i.message, stack: i.stack },
           }),
-            n;
+            i;
         }
       },
         r;
     },
   };
 }
-function K(c, e, s) {
-  let r, t, o = {};
-  return typeof c == "string"
-    ? (r = c, t = e, o = s || {})
-    : (t = c, r = "", o = e || {}),
-    s && s.rollbackFn && (o.rollbackFn = s.rollbackFn),
-    async function (...a) {
-      let n = this instanceof d ? this : p.getStore();
-      if (!n) return await t(...a);
-      let i = r || n.getSequentialId("step");
-      return n.executeStep(i, t.bind(n), a, o, t.name);
+function K(l, e, o) {
+  let r, t, s = {};
+  return typeof l == "string"
+    ? (r = l, t = e, s = o || {})
+    : (t = l, r = "", s = e || {}),
+    o && o.rollbackFn && (s.rollbackFn = o.rollbackFn),
+    async function (...n) {
+      let i = this instanceof f ? this : p.getStore();
+      if (!i) return await t(...n);
+      let a = r || i.getSequentialId("step");
+      return i.executeStep(a, t.bind(i), n, s, t.name);
     };
 }
 export {
-  B as workflow,
-  d as WorkflowBase,
+  f as WorkflowBase,
   g as WorkflowWorker,
-  h as WorkflowSuspension,
+  h as WorkflowRegistry,
   K as step,
   k as RocketBaseClient,
-  m as StopRollback,
-  R as Workflow,
-  U as Step,
-  w as WorkflowRegistry,
+  N as Step,
+  q as workflow,
+  T as Workflow,
+  w as WorkflowSuspension,
+  y as StopRollback,
 };
 //# sourceMappingURL=exports.js.map
