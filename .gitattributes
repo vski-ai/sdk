@@ -3,4 +3,7 @@
 *.js linguist-vendored
 *.css linguist-vendored
 *.lock linguist-vendored
+*.example linguist-vendored
+*.yaml linguist-vendored
 web/* linguist-vendored
+dist/* linguist-vendored

@@ -1,0 +1,143 @@
+# This compose file is used for production deployment of RocketBase
+# Usage:
+#   cp docker/.env.example docker/.env
+#   # Edit docker/.env with your values
+#   docker compose -f docker/docker-compose.prod.yaml up -d
+
+services:
+  # RocketBase API Service
+  api:
+    image: ${REGISTRY:-ghcr.io/vski-ai/sdk}/vrb:${VERSION:-latest}
+    restart: always
+    command: vrb
+    ports:
+      - "${PORT:-3000}:3000"
+      - "8000:8000"
+    environment:
+      # API Configuration
+      - PORT=${PORT:-3000}
+      - NODE_ENV=production
+
+      # Database Configuration
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=${DB_NAME:-postgres}
+
+      # Redis/Valkey Configuration
+      - REDIS_HOST=valkey
+      - REDIS_PORT=6379
+
+      # Security
+      - JWT_SECRET=${JWT_SECRET:-super-secret-key-change-me}
+
+      # Retention Service
+      - RETENTION_INTERVAL_MS=${RETENTION_INTERVAL_MS:-1800000}
+
+      # S3 Storage (Optional)
+      - S3_ENABLED=${S3_ENABLED:-false}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-}
+      - S3_SECRET=${S3_SECRET:-}
+      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-false}
+    volumes:
+      # Persistent storage for local files
+      - rb_storage:/app/rb_data/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: [
+        "CMD",
+        "wget",
+        "--no-verbose",
+        "--tries=1",
+        "--spider",
+        "http://localhost:3000/",
+      ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - rocketbase
+
+  # PostgreSQL Database with all required extensions
+  db:
+    image: supabase/postgres:15.1.1.78
+    environment:
+      - POSTGRES_USER=${DB_USERNAME:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_DB=${DB_NAME:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - rocketbase
+    # PostgreSQL requires additional capabilities for some extensions
+    cap_add:
+      - SYS_NICE
+
+  # Valkey (Redis-compatible) for caching and queues
+  valkey:
+    image: valkey/valkey:latest
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    expose:
+      - "6379"
+    command: >
+      valkey-server
+      --appendonly yes
+      --appendfilename "appendonly.aof"
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --bind 0.0.0.0
+    volumes:
+      # Persistent Valkey data (AOF)
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - rocketbase
+
+# Named volumes for data persistence
+volumes:
+  # PostgreSQL data
+  pg_data:
+    driver: local
+    name: rocketbase-pg-data
+
+  # Valkey AOF data
+  valkey_data:
+    driver: local
+    name: rocketbase-valkey-data
+
+  # Local file storage for API
+  rb_storage:
+    driver: local
+    name: rocketbase-storage
+
+# Internal network for service communication
+networks:
+  rocketbase:
+    driver: bridge
+    name: rocketbase
