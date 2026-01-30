@@ -192,7 +192,7 @@ await client.workflow.sendSignal(run.runId, "user-confirm", { success: true });
 
 ### Browser
 
-When building for browsers omit node depenedencies:
+When building with webpack for browsers omit node depenedencies:
 
 ```javascript
 {
