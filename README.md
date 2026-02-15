@@ -1,3 +1,4 @@
+> This project now lives at https://git.vski.sh/x/vski-js
 # VSKI SDK
 
 The VSKI SDK is a runtime-agnostic client for interacting with the VSKI
